@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { CatalogImportMode, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
@@ -55,14 +56,20 @@ export async function POST(request: NextRequest) {
       modeRaw === "replace" ? CatalogImportMode.replace : CatalogImportMode.update;
 
     const fileType = detectCatalogFileType(file.name, file.type);
-    if (fileType !== existingImport.fileType || file.name !== existingImport.filename) {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const fileHash = createHash("sha256").update(buffer).digest("hex");
+    if (
+      fileType !== existingImport.fileType ||
+      file.name !== existingImport.filename ||
+      (existingImport.fileHash && existingImport.fileHash !== fileHash)
+    ) {
       return NextResponse.json(
         { error: "El archivo aprobado no coincide con el archivo analizado." },
         { status: 400 },
       );
     }
 
-    const parsed = parseCatalogBuffer(Buffer.from(await file.arrayBuffer()), fileType);
+    const parsed = parseCatalogBuffer(buffer, fileType);
 
     await db.catalogImport.update({
       where: { id: importId },
