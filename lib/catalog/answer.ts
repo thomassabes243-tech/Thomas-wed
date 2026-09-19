@@ -16,6 +16,10 @@ function isHospitalityBusiness(value: string | null) {
   return /hotel|hostal|hospedaje|cabina|lodge|turismo|tour|excursion|excursión|operador turist/i.test(value ?? "");
 }
 
+function isHospitalityQuery(value: string) {
+  return /\b(hotel|hostal|hosped|cabina|lodge|habitaci[oó]n|tour|excursi[oó]n|check.?in|check.?out|reserva|hu[eé]sped|pasajero)\b/i.test(value);
+}
+
 function asksForDateAvailability(value: string) {
   return /\b(disponib|reserv|habitaci[oó]n.*(?:hoy|mañana|manana|fecha)|hoy|mañana|manana|esta noche|fin de semana|check.?in|entrada.*fecha)\b/i.test(value);
 }
@@ -59,7 +63,7 @@ export async function answerCatalogQuestion(params: {
     };
   }
 
-  const hospitality = isHospitalityBusiness(business.type);
+  const hospitality = isHospitalityBusiness(business.type) || isHospitalityQuery(params.query);
   const dateAvailability = hospitality && asksForDateAvailability(params.query);
 
   const products = await searchProducts({
@@ -89,8 +93,9 @@ export async function answerCatalogQuestion(params: {
   }
 
   const visible = products.slice(0, 3);
-  const tourismDataPresent = visible.some((product) =>
-    Boolean(
+  const lines = visible.map((product) => {
+    const details: string[] = [];
+    const productHasTourismData = Boolean(
       product.serviceType ||
       product.location ||
       product.duration ||
@@ -102,11 +107,7 @@ export async function answerCatalogQuestion(params: {
       product.availabilityNote ||
       product.reservationRequired !== null ||
       product.cancellationPolicy,
-    ),
-  );
-
-  const lines = visible.map((product) => {
-    const details: string[] = [];
+    );
 
     if (product.serviceType) details.push(product.serviceType);
     if (product.presentation) details.push(product.presentation);
@@ -124,7 +125,7 @@ export async function answerCatalogQuestion(params: {
     const price = formatPrice(product.price);
     if (price) details.push(`precio registrado: ${price}`);
 
-    if (!tourismDataPresent) {
+    if (!productHasTourismData) {
       const stock = formatStock(product.stock, product.unit);
       if (stock) details.push(`inventario registrado: ${stock}`);
     }
