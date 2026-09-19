@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
-    assertCatalogAdmin(request);
+    await assertCatalogAdmin();
     const form = await request.formData();
     const businessId = String(form.get("businessId") ?? "").trim();
     const importId = String(form.get("importId") ?? "").trim();
