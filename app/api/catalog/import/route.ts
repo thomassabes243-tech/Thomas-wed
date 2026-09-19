@@ -9,6 +9,12 @@ import { assertBusinessExists, assertCatalogAdmin } from "@/lib/catalog/security
 
 export const runtime = "nodejs";
 
+function maxBytes() {
+  const configured = Number(process.env.CATALOG_MAX_FILE_MB ?? "10");
+  const mb = Number.isFinite(configured) && configured > 0 ? configured : 10;
+  return mb * 1024 * 1024;
+}
+
 export async function POST(request: NextRequest) {
   try {
     await assertCatalogAdmin();
@@ -28,6 +34,12 @@ export async function POST(request: NextRequest) {
     }
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Debe volver a adjuntar el archivo aprobado." }, { status: 400 });
+    }
+    if (file.size <= 0) {
+      return NextResponse.json({ error: "El archivo está vacío." }, { status: 400 });
+    }
+    if (file.size > maxBytes()) {
+      return NextResponse.json({ error: "El archivo supera el límite configurado." }, { status: 413 });
     }
 
     await assertBusinessExists(businessId);
