@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { detectCatalogFileType, parseCatalogBuffer } from "@/lib/catalog/parser";
+import { normalizeProductRow } from "@/lib/catalog/importer";
 import { assertBusinessExists, assertCatalogAdmin } from "@/lib/catalog/security";
 
 export const runtime = "nodejs";
@@ -50,11 +51,60 @@ export async function POST(request: NextRequest) {
       identifiers.add(value);
     });
 
+    const validationErrors: Array<{ row: number; reason: string }> = [];
+    if (!parsed.suggestedMapping.name) {
+      validationErrors.push({ row: 1, reason: "No se detectó automáticamente una columna para Nombre." });
+    }
+    if (!parsed.suggestedMapping.sku && !parsed.suggestedMapping.externalCode) {
+      validationErrors.push({ row: 1, reason: "No se detectó SKU ni código externo para controlar duplicados." });
+    }
+
+    parsed.rows.slice(0, 100).forEach((row, index) => {
+      if (!parsed.suggestedMapping.name) return;
+      try {
+        const normalized = normalizeProductRow(row, parsed.suggestedMapping);
+        if (!normalized.sku && !normalized.externalCode) {
+          validationErrors.push({ row: index + 2, reason: "Falta SKU o código externo." });
+        }
+      } catch (error) {
+        validationErrors.push({
+          row: index + 2,
+          reason: error instanceof Error ? error.message : "Fila inválida.",
+        });
+      }
+    });
+
+    const sampleSkus = parsed.rows
+      .map((row) => skuColumn ? String(row[skuColumn] ?? "").trim() : "")
+      .filter(Boolean)
+      .slice(0, 1000);
+    const sampleCodes = parsed.rows
+      .map((row) => codeColumn ? String(row[codeColumn] ?? "").trim() : "")
+      .filter(Boolean)
+      .slice(0, 1000);
+
+    const existingMatches =
+      sampleSkus.length || sampleCodes.length
+        ? await db.product.findMany({
+            where: {
+              businessId,
+              OR: [
+                ...(sampleSkus.length ? [{ sku: { in: sampleSkus } }] : []),
+                ...(sampleCodes.length ? [{ externalCode: { in: sampleCodes } }] : []),
+              ],
+            },
+            select: { id: true, name: true, sku: true, externalCode: true },
+            take: 25,
+          })
+        : [];
+
     const previewPayload = {
       headers: parsed.headers,
       rows: parsed.previewRows,
       warnings: parsed.warnings,
       duplicateRows: duplicateRows.slice(0, 25),
+      validationErrors: validationErrors.slice(0, 25),
+      existingMatches,
     };
 
     const catalogImport = await db.catalogImport.create({
@@ -82,6 +132,8 @@ export async function POST(request: NextRequest) {
       previewRows: parsed.previewRows,
       warnings: parsed.warnings,
       duplicateRows: duplicateRows.slice(0, 25),
+      validationErrors: validationErrors.slice(0, 25),
+      existingMatches,
       requiresApproval: true,
     });
   } catch (error) {
