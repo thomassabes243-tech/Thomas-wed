@@ -4,81 +4,190 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "@/app/catalog/catalog.module.css";
 
 type Business = { id: string; name: string; country: string | null };
+type Tab = "resumen" | "catalogo" | "simulador" | "importar" | "configuracion";
+
+type Dashboard = {
+  business: Business & {
+    type?: string | null;
+    phoneNumber?: string | null;
+    address?: string | null;
+  };
+  metrics: {
+    activeProducts: number;
+    inactiveProducts: number;
+    imports: number;
+    openConversations: number;
+    humanRequired: number;
+    categories: number;
+  };
+  categories: string[];
+  recentImports: Array<{
+    id: string;
+    filename: string;
+    status: string;
+    importedRows: number;
+    updatedRows: number;
+    rejectedRows: number;
+    createdAt: string;
+  }>;
+};
+
+type Product = {
+  id: string;
+  externalCode: string | null;
+  sku: string | null;
+  name: string;
+  category: string | null;
+  description: string | null;
+  price: string | null;
+  stock: string | null;
+  presentation: string | null;
+  unit: string | null;
+  serviceType: string | null;
+  location: string | null;
+  duration: string | null;
+  capacity: number | null;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  includes: string | null;
+  amenities: string | null;
+  availabilityNote: string | null;
+  reservationRequired: boolean | null;
+  cancellationPolicy: string | null;
+  active: boolean;
+};
+
+type Settings = {
+  business: {
+    id: string;
+    name: string;
+    type: string | null;
+    description: string | null;
+    address: string | null;
+    phoneNumber: string | null;
+    country: string | null;
+    botConfig: {
+      systemInstructions: string;
+      tone: string;
+      welcomeMessage: string;
+      fallbackMessage: string;
+      humanHandoffMessage: string;
+      active: boolean;
+    } | null;
+  };
+};
+
 type Mapping = Record<string, string | undefined>;
 type Preview = {
   importId: string;
   filename: string;
-  fileType: string;
   totalRows: number;
   headers: string[];
   suggestedMapping: Mapping;
   previewRows: Record<string, unknown>[];
   warnings: string[];
-  duplicateRows: number[];
   validationErrors: Array<{ row: number; reason: string }>;
-  existingMatches: Array<{ id: string; name: string; sku: string | null; externalCode: string | null }>;
-};
-type ImportResult = {
-  processed: number;
-  created: number;
-  updated: number;
-  unchanged: number;
-  rejected: number;
-  deactivated: number;
-};
-type ImportHistory = {
-  id: string;
-  filename: string;
-  status: string;
-  mode: string;
-  totalRows: number;
-  importedRows: number;
-  updatedRows: number;
-  unchangedRows: number;
-  rejectedRows: number;
-  createdAt: string;
 };
 
-const fields = [
-  ["externalCode", "Código externo"],
+const EMPTY_PRODUCT = {
+  externalCode: "",
+  sku: "",
+  name: "",
+  category: "",
+  description: "",
+  price: "",
+  stock: "",
+  presentation: "",
+  unit: "",
+  serviceType: "",
+  location: "",
+  duration: "",
+  capacity: "",
+  checkInTime: "",
+  checkOutTime: "",
+  includes: "",
+  amenities: "",
+  availabilityNote: "",
+  reservationRequired: "",
+  cancellationPolicy: "",
+};
+
+type ProductDraft = typeof EMPTY_PRODUCT;
+
+const importFields = [
+  ["externalCode", "Código"],
   ["sku", "SKU"],
   ["name", "Nombre *"],
   ["category", "Categoría"],
   ["description", "Descripción"],
   ["price", "Precio"],
   ["stock", "Existencia"],
-  ["presentation", "Presentación"],
-  ["unit", "Unidad"],
-  ["requiresPrescription", "Requiere receta"],
-  ["serviceType", "Tipo de servicio / habitación"],
-  ["location", "Ubicación / destino"],
+  ["unit", "Precio por / unidad"],
+  ["serviceType", "Tipo de servicio"],
+  ["location", "Ubicación"],
   ["duration", "Duración"],
-  ["capacity", "Capacidad de personas"],
-  ["checkInTime", "Hora de check-in"],
-  ["checkOutTime", "Hora de check-out"],
-  ["includes", "Qué incluye"],
-  ["amenities", "Comodidades / amenidades"],
-  ["availabilityNote", "Nota de disponibilidad"],
+  ["capacity", "Capacidad"],
+  ["checkInTime", "Check-in"],
+  ["checkOutTime", "Check-out"],
+  ["includes", "Incluye"],
+  ["amenities", "Amenidades"],
+  ["availabilityNote", "Disponibilidad"],
   ["reservationRequired", "Requiere reserva"],
-  ["cancellationPolicy", "Política de cancelación"],
+  ["cancellationPolicy", "Cancelación"],
 ] as const;
 
+function productToDraft(product: Product): ProductDraft {
+  return {
+    externalCode: product.externalCode ?? "",
+    sku: product.sku ?? "",
+    name: product.name,
+    category: product.category ?? "",
+    description: product.description ?? "",
+    price: product.price ?? "",
+    stock: product.stock ?? "",
+    presentation: product.presentation ?? "",
+    unit: product.unit ?? "",
+    serviceType: product.serviceType ?? "",
+    location: product.location ?? "",
+    duration: product.duration ?? "",
+    capacity: product.capacity === null ? "" : String(product.capacity),
+    checkInTime: product.checkInTime ?? "",
+    checkOutTime: product.checkOutTime ?? "",
+    includes: product.includes ?? "",
+    amenities: product.amenities ?? "",
+    availabilityNote: product.availabilityNote ?? "",
+    reservationRequired:
+      product.reservationRequired === null ? "" : product.reservationRequired ? "true" : "false",
+    cancellationPolicy: product.cancellationPolicy ?? "",
+  };
+}
+
 export default function CatalogManager() {
+  const [tab, setTab] = useState<Tab>("resumen");
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [businessId, setBusinessId] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [mapping, setMapping] = useState<Mapping>({});
-  const [mode, setMode] = useState<"update" | "replace">("update");
-  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
-  const [history, setHistory] = useState<ImportHistory[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [selectingBusiness, setSelectingBusiness] = useState(false);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("active");
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productDraft, setProductDraft] = useState<ProductDraft>({ ...EMPTY_PRODUCT });
+  const [showProductForm, setShowProductForm] = useState(false);
+
   const [testQuery, setTestQuery] = useState("");
   const [botAnswer, setBotAnswer] = useState("");
   const [testingAnswer, setTestingAnswer] = useState(false);
+
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [mapping, setMapping] = useState<Mapping>({});
+  const [importMode, setImportMode] = useState<"update" | "replace">("update");
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
 
   useEffect(() => {
     fetch("/api/catalog/businesses")
@@ -91,66 +200,143 @@ export default function CatalogManager() {
       .catch(() => setMessage("No se pudieron cargar las empresas."));
   }, []);
 
-  useEffect(() => {
-    if (!businessId) {
-      setHistory([]);
-      return;
-    }
-    fetch(`/api/catalog/history?businessId=${encodeURIComponent(businessId)}`)
-      .then((response) => response.json())
-      .then((data) => setHistory(data.imports ?? []))
-      .catch(() => setHistory([]));
-  }, [businessId, result]);
-
   const selectedBusiness = useMemo(
     () => businesses.find((business) => business.id === businessId),
     [businesses, businessId],
   );
 
-  async function selectBusiness(nextBusinessId: string) {
-    if (!nextBusinessId) {
+  async function selectBusiness(nextId: string) {
+    if (!nextId) {
       setBusinessId("");
-      setPreview(null);
-      setResult(null);
-      setFile(null);
-      setHistory([]);
+      setDashboard(null);
+      setProducts([]);
+      setSettings(null);
       return;
     }
 
-    setSelectingBusiness(true);
+    setBusy(true);
     setMessage("");
     try {
       const response = await fetch("/api/catalog/business/select", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ businessId: nextBusinessId }),
+        body: JSON.stringify({ businessId: nextId }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "No se pudo seleccionar la empresa.");
-
-      setBusinessId(nextBusinessId);
-      setPreview(null);
-      setResult(null);
-      setFile(null);
-      setReplaceConfirmed(false);
-      setTestQuery("");
-      setBotAnswer("");
-      setMessage(`Empresa activa: ${data.business.name}`);
+      setBusinessId(nextId);
+      await Promise.all([loadDashboard(nextId), loadProducts(nextId), loadSettings(nextId)]);
     } catch (error) {
-      setBusinessId("");
-      setHistory([]);
       setMessage(error instanceof Error ? error.message : "No se pudo seleccionar la empresa.");
     } finally {
-      setSelectingBusiness(false);
+      setBusy(false);
+    }
+  }
+
+  async function loadDashboard(id = businessId) {
+    if (!id) return;
+    const response = await fetch(`/api/catalog/dashboard?businessId=${encodeURIComponent(id)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error ?? "No se pudo cargar el resumen.");
+    setDashboard(data);
+  }
+
+  async function loadProducts(id = businessId) {
+    if (!id) return;
+    const params = new URLSearchParams({
+      businessId: id,
+      status: statusFilter,
+    });
+    if (query.trim()) params.set("q", query.trim());
+    if (categoryFilter) params.set("category", categoryFilter);
+
+    const response = await fetch(`/api/catalog/products?${params.toString()}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error ?? "No se pudo cargar el catálogo.");
+    setProducts(data.products ?? []);
+  }
+
+  async function loadSettings(id = businessId) {
+    if (!id) return;
+    const response = await fetch(`/api/catalog/settings?businessId=${encodeURIComponent(id)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error ?? "No se pudo cargar la configuración.");
+    setSettings(data);
+  }
+
+  useEffect(() => {
+    if (businessId && tab === "catalogo") {
+      const timer = window.setTimeout(() => {
+        void loadProducts();
+      }, 250);
+      return () => window.clearTimeout(timer);
+    }
+  }, [query, categoryFilter, statusFilter, businessId, tab]);
+
+  function openNewProduct() {
+    setEditingProduct(null);
+    setProductDraft({ ...EMPTY_PRODUCT });
+    setShowProductForm(true);
+  }
+
+  function openEditProduct(product: Product) {
+    setEditingProduct(product);
+    setProductDraft(productToDraft(product));
+    setShowProductForm(true);
+  }
+
+  async function saveProduct() {
+    if (!businessId || !productDraft.name.trim()) {
+      setMessage("Escribí al menos el nombre del producto o servicio.");
+      return;
+    }
+
+    setBusy(true);
+    setMessage("");
+    try {
+      const url = editingProduct
+        ? `/api/catalog/products/${editingProduct.id}`
+        : "/api/catalog/products";
+      const response = await fetch(url, {
+        method: editingProduct ? "PATCH" : "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ businessId, ...productDraft }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "No se pudo guardar.");
+      setShowProductForm(false);
+      setEditingProduct(null);
+      setProductDraft({ ...EMPTY_PRODUCT });
+      setMessage(editingProduct ? "Servicio actualizado." : "Servicio agregado al catálogo.");
+      await Promise.all([loadProducts(), loadDashboard()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleProduct(product: Product) {
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/catalog/products/${product.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ businessId, active: !product.active }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "No se pudo actualizar.");
+      setMessage(product.active ? "Servicio desactivado." : "Servicio activado.");
+      await Promise.all([loadProducts(), loadDashboard()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo actualizar.");
+    } finally {
+      setBusy(false);
     }
   }
 
   async function testCatalogAnswer() {
-    if (!businessId || !testQuery.trim()) {
-      setMessage("Seleccioná una empresa y escribí una consulta para probar el catálogo.");
-      return;
-    }
-
+    if (!businessId || !testQuery.trim()) return;
     setTestingAnswer(true);
     setBotAnswer("");
     try {
@@ -160,33 +346,32 @@ export default function CatalogManager() {
         body: JSON.stringify({ businessId, query: testQuery }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "No se pudo probar la respuesta.");
+      if (!response.ok) throw new Error(data.error ?? "No se pudo consultar.");
       setBotAnswer(data.reply ?? "");
     } catch (error) {
-      setBotAnswer(error instanceof Error ? error.message : "No se pudo probar la respuesta.");
+      setBotAnswer(error instanceof Error ? error.message : "No se pudo consultar.");
     } finally {
       setTestingAnswer(false);
     }
   }
 
-  async function analyze() {
+  async function analyzeFile() {
     if (!businessId || !file) {
       setMessage("Seleccioná una empresa y un archivo CSV o XLSX.");
       return;
     }
     setBusy(true);
     setMessage("");
-    setResult(null);
     try {
       const form = new FormData();
       form.set("businessId", businessId);
       form.set("file", file);
       const response = await fetch("/api/catalog/preview", { method: "POST", body: form });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "No se pudo analizar el archivo.");
+      if (!response.ok) throw new Error(data.error ?? "No se pudo analizar.");
       setPreview(data);
       setMapping(data.suggestedMapping ?? {});
-      setMessage("Archivo analizado. Revisá el mapeo antes de aprobar.");
+      setMessage("Archivo analizado. Revisá los campos antes de importar.");
     } catch (error) {
       setPreview(null);
       setMessage(error instanceof Error ? error.message : "No se pudo analizar.");
@@ -195,14 +380,14 @@ export default function CatalogManager() {
     }
   }
 
-  async function approveImport() {
+  async function importFile() {
     if (!preview || !file || !businessId) return;
     if (!mapping.name || (!mapping.sku && !mapping.externalCode)) {
-      setMessage("Mapeá Nombre y al menos SKU o Código externo.");
+      setMessage("Mapeá Nombre y Código o SKU.");
       return;
     }
-    if (mode === "replace" && !replaceConfirmed) {
-      setMessage("Confirmá explícitamente el modo Reemplazar catálogo.");
+    if (importMode === "replace" && !replaceConfirmed) {
+      setMessage("Confirmá que querés reemplazar el catálogo.");
       return;
     }
 
@@ -213,19 +398,20 @@ export default function CatalogManager() {
       form.set("businessId", businessId);
       form.set("importId", preview.importId);
       form.set("mapping", JSON.stringify(mapping));
-      form.set("mode", mode);
+      form.set("mode", importMode);
       form.set("approved", "true");
       form.set("file", file);
-
       const response = await fetch("/api/catalog/import", { method: "POST", body: form });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "No se pudo importar.");
-      setResult(data.summary);
       setPreview(null);
       setFile(null);
       setMapping({});
       setReplaceConfirmed(false);
-      setMessage("Importación completada.");
+      setMessage(
+        `Importación lista: ${data.summary.created} nuevos, ${data.summary.updated} actualizados, ${data.summary.rejected} rechazados.`,
+      );
+      await Promise.all([loadProducts(), loadDashboard()]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo importar.");
     } finally {
@@ -233,230 +419,439 @@ export default function CatalogManager() {
     }
   }
 
+  async function saveSettings() {
+    if (!businessId || !settings) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const b = settings.business;
+      const bot = b.botConfig;
+      const response = await fetch("/api/catalog/settings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          businessId,
+          name: b.name,
+          type: b.type,
+          description: b.description,
+          address: b.address,
+          phoneNumber: b.phoneNumber,
+          country: b.country,
+          systemInstructions: bot?.systemInstructions ?? "",
+          tone: bot?.tone ?? "amable y breve",
+          welcomeMessage: bot?.welcomeMessage ?? "",
+          fallbackMessage: bot?.fallbackMessage ?? "",
+          humanHandoffMessage: bot?.humanHandoffMessage ?? "",
+          botActive: bot?.active ?? true,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "No se pudo guardar.");
+      setMessage("Configuración guardada.");
+      await Promise.all([loadSettings(), loadDashboard()]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const metricCards = dashboard
+    ? [
+        ["Servicios activos", dashboard.metrics.activeProducts],
+        ["Categorías", dashboard.metrics.categories],
+        ["Importaciones", dashboard.metrics.imports],
+        ["Chats abiertos", dashboard.metrics.openConversations],
+        ["Requieren humano", dashboard.metrics.humanRequired],
+        ["Inactivos", dashboard.metrics.inactiveProducts],
+      ]
+    : [];
+
   return (
-    <div className={styles.stackLarge}>
-      <section className={styles.card}>
-        <h2>Importar catálogo</h2>
-        <div className={styles.stack}>
-          <label className={styles.field}>
-            <span>Empresa</span>
-            <select
-              value={businessId}
-              disabled={selectingBusiness || busy}
-              onChange={(event) => void selectBusiness(event.target.value)}
-            >
-              <option value="">Seleccionar empresa</option>
-              {businesses.map((business) => (
-                <option key={business.id} value={business.id}>
-                  {business.name}{business.country ? ` · ${business.country}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            <span>Archivo</span>
-            <input
-              type="file"
-              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={(event) => {
-                setFile(event.target.files?.[0] ?? null);
-                setPreview(null);
-                setResult(null);
-              }}
-            />
-          </label>
-
-          <button className={styles.primaryButton} type="button" onClick={analyze} disabled={busy}>
-            {busy ? "Procesando…" : selectingBusiness ? "Seleccionando empresa…" : "Analizar archivo"}
-          </button>
+    <div className={styles.appShell}>
+      <section className={styles.businessBar}>
+        <div>
+          <span className={styles.eyebrow}>NEGOCIO ACTIVO</span>
+          <select
+            value={businessId}
+            onChange={(event) => void selectBusiness(event.target.value)}
+            disabled={busy}
+          >
+            <option value="">Seleccionar empresa</option>
+            {businesses.map((business) => (
+              <option key={business.id} value={business.id}>
+                {business.name}{business.country ? ` · ${business.country}` : ""}
+              </option>
+            ))}
+          </select>
         </div>
-        {selectedBusiness ? (
-          <p className={styles.help}>
-            Catálogo aislado para <strong>{selectedBusiness.name}</strong>. No se aplicará símbolo de moneda.
-          </p>
-        ) : null}
+        <div className={styles.statusPill}>
+          <span className={styles.statusDot} />
+          Preview seguro
+        </div>
       </section>
+
+      <nav className={styles.tabs}>
+        {[
+          ["resumen", "Resumen"],
+          ["catalogo", "Catálogo"],
+          ["simulador", "Probar bot"],
+          ["importar", "Importar"],
+          ["configuracion", "Configurar"],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={tab === value ? styles.tabActive : styles.tab}
+            onClick={() => setTab(value as Tab)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
 
       {message ? <div className={styles.notice}>{message}</div> : null}
 
-      {preview ? (
-        <section className={styles.card}>
-          <div className={styles.sectionHeader}>
+      {!businessId ? (
+        <section className={styles.emptyState}>
+          <h2>Elegí un negocio para empezar</h2>
+          <p>Desde aquí vas a poder administrar lo que el bot sabe, probar respuestas y actualizar servicios.</p>
+        </section>
+      ) : null}
+
+      {businessId && tab === "resumen" ? (
+        <div className={styles.pageStack}>
+          <section className={styles.heroCard}>
             <div>
-              <div className={styles.kicker}>REVISIÓN OBLIGATORIA</div>
-              <h2>{preview.filename}</h2>
+              <span className={styles.eyebrow}>CENTRO DE CONTROL</span>
+              <h2>{dashboard?.business.name ?? selectedBusiness?.name}</h2>
+              <p>
+                Administrá lo que MetaBot puede responder. Los cambios de este panel afectan únicamente este negocio.
+              </p>
             </div>
-            <span className={styles.badge}>{preview.totalRows} registros</span>
-          </div>
+            <button type="button" className={styles.primaryButton} onClick={() => setTab("catalogo")}>
+              Ver catálogo
+            </button>
+          </section>
 
-          {preview.warnings.length ? (
-            <div className={styles.warningBox}>
-              {preview.warnings.map((warning) => <p key={warning}>{warning}</p>)}
-            </div>
-          ) : null}
-
-          {preview.duplicateRows.length ? (
-            <div className={styles.warningBox}>
-              Posibles duplicados dentro del archivo en filas: {preview.duplicateRows.join(", ")}
-            </div>
-          ) : null}
-
-          {preview.validationErrors?.length ? (
-            <div className={styles.warningBox}>
-              <strong>Errores detectados en la revisión:</strong>
-              {preview.validationErrors.map((item) => (
-                <p key={`${item.row}-${item.reason}`}>Fila {item.row}: {item.reason}</p>
-              ))}
-            </div>
-          ) : null}
-
-          {preview.existingMatches?.length ? (
-            <div className={styles.warningBox}>
-              <strong>Productos que ya podrían existir en esta empresa:</strong>
-              {preview.existingMatches.map((item) => (
-                <p key={item.id}>{item.name} · {item.sku ?? item.externalCode ?? "sin código"}</p>
-              ))}
-            </div>
-          ) : null}
-
-          <h3>Mapeo de columnas</h3>
-          <div className={styles.mappingGrid}>
-            {fields.map(([field, label]) => (
-              <label className={styles.field} key={field}>
+          <section className={styles.metricGrid}>
+            {metricCards.map(([label, value]) => (
+              <article className={styles.metricCard} key={String(label)}>
+                <strong>{value}</strong>
                 <span>{label}</span>
-                <select
-                  value={mapping[field] ?? ""}
-                  onChange={(event) =>
-                    setMapping((current) => ({
-                      ...current,
-                      [field]: event.target.value || undefined,
-                    }))
-                  }
-                >
-                  <option value="">No importar</option>
-                  {preview.headers.map((header) => (
-                    <option key={header} value={header}>{header}</option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
-
-          <h3>Vista previa</h3>
-          <div className={styles.previewList}>
-            {preview.previewRows.map((row, index) => (
-              <article key={index} className={styles.previewRow}>
-                <strong>Fila {index + 2}</strong>
-                {preview.headers.slice(0, 8).map((header) => (
-                  <div key={header}>
-                    <span>{header}</span>
-                    <b>{String(row[header] ?? "—")}</b>
-                  </div>
-                ))}
               </article>
             ))}
-          </div>
+          </section>
 
-          <h3>Modo de importación</h3>
-          <div className={styles.modeGrid}>
-            <label className={styles.choice}>
-              <input type="radio" checked={mode === "update"} onChange={() => setMode("update")} />
-              <span><strong>Actualizar catálogo</strong><small>Crea y actualiza. No desactiva ausentes.</small></span>
-            </label>
-            <label className={styles.choice}>
-              <input type="radio" checked={mode === "replace"} onChange={() => setMode("replace")} />
-              <span><strong>Reemplazar catálogo</strong><small>Puede desactivar productos anteriores que no estén en el archivo.</small></span>
-            </label>
-          </div>
+          <section className={styles.twoColumn}>
+            <article className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <span className={styles.eyebrow}>ACCESO RÁPIDO</span>
+                  <h3>Qué querés hacer</h3>
+                </div>
+              </div>
+              <div className={styles.quickGrid}>
+                <button type="button" onClick={() => { openNewProduct(); setTab("catalogo"); }}>
+                  <strong>+ Agregar servicio</strong>
+                  <span>Cargar una habitación, tour, producto o servicio manualmente.</span>
+                </button>
+                <button type="button" onClick={() => setTab("simulador")}>
+                  <strong>Probar el bot</strong>
+                  <span>Preguntale como lo haría un cliente real.</span>
+                </button>
+                <button type="button" onClick={() => setTab("importar")}>
+                  <strong>Importar Excel/CSV</strong>
+                  <span>Para catálogos grandes o actualizaciones masivas.</span>
+                </button>
+                <button type="button" onClick={() => setTab("configuracion")}>
+                  <strong>Configurar negocio</strong>
+                  <span>Datos, tono, mensajes y reglas del bot.</span>
+                </button>
+              </div>
+            </article>
 
-          {mode === "replace" ? (
-            <label className={styles.confirm}>
-              <input
-                type="checkbox"
-                checked={replaceConfirmed}
-                onChange={(event) => setReplaceConfirmed(event.target.checked)}
-              />
-              Confirmo que quiero reemplazar el catálogo. Los productos ausentes se desactivarán, no se borrarán.
-            </label>
+            <article className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <span className={styles.eyebrow}>ÚLTIMA ACTIVIDAD</span>
+                  <h3>Importaciones</h3>
+                </div>
+              </div>
+              {!dashboard?.recentImports.length ? (
+                <p className={styles.muted}>Todavía no hay actividad de importación.</p>
+              ) : (
+                <div className={styles.activityList}>
+                  {dashboard.recentImports.map((item) => (
+                    <div key={item.id}>
+                      <strong>{item.filename}</strong>
+                      <span>{item.status} · {new Date(item.createdAt).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+          </section>
+        </div>
+      ) : null}
+
+      {businessId && tab === "catalogo" ? (
+        <div className={styles.pageStack}>
+          <section className={styles.toolbarCard}>
+            <div>
+              <span className={styles.eyebrow}>LO QUE EL BOT SABE</span>
+              <h2>Catálogo de servicios y productos</h2>
+            </div>
+            <button type="button" className={styles.primaryButton} onClick={openNewProduct}>
+              + Agregar
+            </button>
+          </section>
+
+          <section className={styles.filters}>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar habitación, tour, producto, código..."
+            />
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+              <option value="">Todas las categorías</option>
+              {dashboard?.categories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+              <option value="all">Todos</option>
+            </select>
+          </section>
+
+          {showProductForm ? (
+            <section className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <span className={styles.eyebrow}>{editingProduct ? "EDITAR" : "NUEVO"}</span>
+                  <h3>{editingProduct ? editingProduct.name : "Agregar producto o servicio"}</h3>
+                </div>
+                <button type="button" className={styles.linkButton} onClick={() => setShowProductForm(false)}>
+                  Cerrar
+                </button>
+              </div>
+
+              <div className={styles.formGrid}>
+                <label><span>Nombre *</span><input value={productDraft.name} onChange={(e) => setProductDraft({ ...productDraft, name: e.target.value })} placeholder="Habitación doble" /></label>
+                <label><span>Categoría</span><input value={productDraft.category} onChange={(e) => setProductDraft({ ...productDraft, category: e.target.value })} placeholder="Hospedaje" /></label>
+                <label><span>Precio</span><input inputMode="decimal" value={productDraft.price} onChange={(e) => setProductDraft({ ...productDraft, price: e.target.value })} placeholder="75" /></label>
+                <label><span>Precio por / unidad</span><input value={productDraft.unit} onChange={(e) => setProductDraft({ ...productDraft, unit: e.target.value })} placeholder="noche / persona" /></label>
+                <label><span>Código</span><input value={productDraft.externalCode} onChange={(e) => setProductDraft({ ...productDraft, externalCode: e.target.value })} placeholder="HAB-DBL" /></label>
+                <label><span>Tipo</span><input value={productDraft.serviceType} onChange={(e) => setProductDraft({ ...productDraft, serviceType: e.target.value })} placeholder="Habitación / Tour" /></label>
+                <label><span>Ubicación</span><input value={productDraft.location} onChange={(e) => setProductDraft({ ...productDraft, location: e.target.value })} placeholder="Guanacaste" /></label>
+                <label><span>Capacidad</span><input inputMode="numeric" value={productDraft.capacity} onChange={(e) => setProductDraft({ ...productDraft, capacity: e.target.value })} placeholder="2" /></label>
+                <label><span>Duración</span><input value={productDraft.duration} onChange={(e) => setProductDraft({ ...productDraft, duration: e.target.value })} placeholder="4 horas" /></label>
+                <label><span>Check-in</span><input value={productDraft.checkInTime} onChange={(e) => setProductDraft({ ...productDraft, checkInTime: e.target.value })} placeholder="14:00" /></label>
+                <label><span>Check-out</span><input value={productDraft.checkOutTime} onChange={(e) => setProductDraft({ ...productDraft, checkOutTime: e.target.value })} placeholder="11:00" /></label>
+                <label><span>Requiere reserva</span><select value={productDraft.reservationRequired} onChange={(e) => setProductDraft({ ...productDraft, reservationRequired: e.target.value })}><option value="">No especificado</option><option value="true">Sí</option><option value="false">No</option></select></label>
+                <label className={styles.fullField}><span>Descripción</span><textarea value={productDraft.description} onChange={(e) => setProductDraft({ ...productDraft, description: e.target.value })} placeholder="Descripción que puede usar el bot..." /></label>
+                <label className={styles.fullField}><span>Incluye</span><textarea value={productDraft.includes} onChange={(e) => setProductDraft({ ...productDraft, includes: e.target.value })} placeholder="Desayuno, transporte, guía..." /></label>
+                <label className={styles.fullField}><span>Amenidades</span><textarea value={productDraft.amenities} onChange={(e) => setProductDraft({ ...productDraft, amenities: e.target.value })} placeholder="WiFi, piscina, aire acondicionado..." /></label>
+                <label className={styles.fullField}><span>Disponibilidad registrada</span><input value={productDraft.availabilityNote} onChange={(e) => setProductDraft({ ...productDraft, availabilityNote: e.target.value })} placeholder="Sujeto a confirmación" /></label>
+                <label className={styles.fullField}><span>Política de cancelación</span><input value={productDraft.cancellationPolicy} onChange={(e) => setProductDraft({ ...productDraft, cancellationPolicy: e.target.value })} placeholder="48 horas" /></label>
+              </div>
+              <div className={styles.actions}>
+                <button type="button" className={styles.secondaryButton} onClick={() => setShowProductForm(false)}>Cancelar</button>
+                <button type="button" className={styles.primaryButton} onClick={() => void saveProduct()} disabled={busy}>
+                  {busy ? "Guardando…" : "Guardar"}
+                </button>
+              </div>
+            </section>
           ) : null}
 
-          <div className={styles.actions}>
-            <button className={styles.secondaryButton} type="button" onClick={() => {
-              setPreview(null);
-              setMapping({});
-            }} disabled={busy}>
-              Cancelar
-            </button>
-            <button className={styles.primaryButton} type="button" onClick={approveImport} disabled={busy}>
-              {busy ? "Importando…" : "Aprobar importación"}
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {result ? (
-        <section className={styles.card}>
-          <div className={styles.kicker}>RESULTADO</div>
-          <h2>Importación completada</h2>
-          <div className={styles.metrics}>
-            <div><strong>{result.processed}</strong><span>Procesados</span></div>
-            <div><strong>{result.created}</strong><span>Nuevos</span></div>
-            <div><strong>{result.updated}</strong><span>Actualizados</span></div>
-            <div><strong>{result.unchanged}</strong><span>Sin cambios</span></div>
-            <div><strong>{result.rejected}</strong><span>Rechazados</span></div>
-            <div><strong>{result.deactivated}</strong><span>Desactivados</span></div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className={styles.card}>
-        <div className={styles.kicker}>PRUEBA DEL CATÁLOGO</div>
-        <h2>Probar respuesta del bot</h2>
-        <p className={styles.muted}>
-          Consultá por nombre, código o categoría. La respuesta usa únicamente información almacenada y no agrega moneda.
-        </p>
-        <div className={styles.stack}>
-          <label className={styles.field}>
-            <span>Consulta</span>
-            <input
-              value={testQuery}
-              onChange={(event) => setTestQuery(event.target.value)}
-              placeholder="Ejemplo: habitación doble para 2 personas"
-              disabled={!businessId || testingAnswer}
-            />
-          </label>
-          <button
-            className={styles.primaryButton}
-            type="button"
-            onClick={testCatalogAnswer}
-            disabled={!businessId || testingAnswer || !testQuery.trim()}
-          >
-            {testingAnswer ? "Consultando…" : "Probar respuesta"}
-          </button>
-        </div>
-        {botAnswer ? <pre className={styles.botAnswer}>{botAnswer}</pre> : null}
-      </section>
-
-      <section className={styles.card}>
-        <h2>Historial</h2>
-        {!businessId ? <p className={styles.muted}>Seleccioná una empresa.</p> : null}
-        {businessId && !history.length ? <p className={styles.muted}>Todavía no hay importaciones.</p> : null}
-        <div className={styles.historyList}>
-          {history.map((item) => (
-            <article key={item.id} className={styles.historyItem}>
-              <div>
-                <strong>{item.filename}</strong>
-                <small>{new Date(item.createdAt).toLocaleString()}</small>
+          <section className={styles.catalogGrid}>
+            {!products.length ? (
+              <div className={styles.emptyState}>
+                <h3>No hay resultados</h3>
+                <p>Agregá un servicio manualmente o importá un archivo.</p>
               </div>
-              <span className={styles.badge}>{item.status}</span>
-              <p>
-                {item.importedRows} nuevos · {item.updatedRows} actualizados · {item.unchangedRows} sin cambios · {item.rejectedRows} rechazados
-              </p>
-            </article>
-          ))}
+            ) : products.map((product) => (
+              <article className={styles.productCard} key={product.id}>
+                <div className={styles.productTop}>
+                  <div>
+                    <span className={product.active ? styles.activeBadge : styles.inactiveBadge}>
+                      {product.active ? "Activo" : "Inactivo"}
+                    </span>
+                    <h3>{product.name}</h3>
+                    <p>{product.category ?? product.serviceType ?? "Sin categoría"}</p>
+                  </div>
+                  <strong className={styles.price}>
+                    {product.price ? `${product.price}${product.unit ? ` / ${product.unit.replace(/^por\s+/i, "")}` : ""}` : "Sin precio"}
+                  </strong>
+                </div>
+                <div className={styles.productDetails}>
+                  {product.location ? <span>📍 {product.location}</span> : null}
+                  {product.capacity !== null ? <span>👥 {product.capacity} personas</span> : null}
+                  {product.duration ? <span>⏱ {product.duration}</span> : null}
+                  {product.checkInTime ? <span>Entrada {product.checkInTime}</span> : null}
+                  {product.includes ? <span>Incluye: {product.includes}</span> : null}
+                </div>
+                <div className={styles.cardActions}>
+                  <button type="button" onClick={() => openEditProduct(product)}>Editar</button>
+                  <button type="button" onClick={() => void toggleProduct(product)}>
+                    {product.active ? "Desactivar" : "Activar"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </section>
         </div>
-      </section>
+      ) : null}
+
+      {businessId && tab === "simulador" ? (
+        <div className={styles.pageStack}>
+          <section className={styles.chatPanel}>
+            <div className={styles.chatHeader}>
+              <div className={styles.botAvatar}>M</div>
+              <div>
+                <strong>MetaBot · {selectedBusiness?.name}</strong>
+                <span>Simulación con datos reales del catálogo</span>
+              </div>
+            </div>
+
+            <div className={styles.chatBody}>
+              <div className={styles.botBubble}>
+                Escribí una pregunta como la haría un cliente. Ejemplo: “¿Cuánto cuesta una habitación doble para dos personas?”
+              </div>
+              {testQuery && botAnswer ? <div className={styles.userBubble}>{testQuery}</div> : null}
+              {botAnswer ? <div className={styles.botBubble}>{botAnswer}</div> : null}
+            </div>
+
+            <div className={styles.chatComposer}>
+              <input
+                value={testQuery}
+                onChange={(event) => setTestQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && testQuery.trim()) void testCatalogAnswer();
+                }}
+                placeholder="Preguntale algo al bot..."
+              />
+              <button type="button" className={styles.primaryButton} onClick={() => void testCatalogAnswer()} disabled={testingAnswer || !testQuery.trim()}>
+                {testingAnswer ? "…" : "Enviar"}
+              </button>
+            </div>
+
+            <div className={styles.suggestions}>
+              {["¿Qué habitaciones tienen?", "¿Cuánto cuesta el tour?", "¿Qué incluye?", "¿A qué hora es el check-in?"].map((item) => (
+                <button key={item} type="button" onClick={() => setTestQuery(item)}>{item}</button>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {businessId && tab === "importar" ? (
+        <div className={styles.pageStack}>
+          <section className={styles.card}>
+            <span className={styles.eyebrow}>CARGA MASIVA</span>
+            <h2>Importar Excel o CSV</h2>
+            <p className={styles.muted}>Usalo cuando el negocio ya tenga una tabla. Para cambios pequeños, es más rápido editar el catálogo manualmente.</p>
+            <div className={styles.uploadBox}>
+              <input
+                type="file"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={(event) => {
+                  setFile(event.target.files?.[0] ?? null);
+                  setPreview(null);
+                }}
+              />
+              <button type="button" className={styles.primaryButton} onClick={() => void analyzeFile()} disabled={!file || busy}>
+                {busy ? "Analizando…" : "Analizar archivo"}
+              </button>
+            </div>
+          </section>
+
+          {preview ? (
+            <section className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <span className={styles.eyebrow}>REVISIÓN ANTES DE IMPORTAR</span>
+                  <h3>{preview.filename}</h3>
+                </div>
+                <span className={styles.countBadge}>{preview.totalRows} filas</span>
+              </div>
+
+              {preview.warnings.map((warning) => <div className={styles.warning} key={warning}>{warning}</div>)}
+              {preview.validationErrors.map((error) => <div className={styles.warning} key={`${error.row}-${error.reason}`}>Fila {error.row}: {error.reason}</div>)}
+
+              <div className={styles.mappingGrid}>
+                {importFields.map(([field, label]) => (
+                  <label key={field}>
+                    <span>{label}</span>
+                    <select value={mapping[field] ?? ""} onChange={(e) => setMapping({ ...mapping, [field]: e.target.value || undefined })}>
+                      <option value="">No importar</option>
+                      {preview.headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+
+              <div className={styles.previewRows}>
+                {preview.previewRows.slice(0, 3).map((row, index) => (
+                  <div key={index}>
+                    <strong>Fila {index + 2}</strong>
+                    {preview.headers.slice(0, 6).map((header) => <span key={header}>{header}: {String(row[header] ?? "—")}</span>)}
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.importMode}>
+                <label><input type="radio" checked={importMode === "update"} onChange={() => setImportMode("update")} /> Actualizar sin borrar ausentes</label>
+                <label><input type="radio" checked={importMode === "replace"} onChange={() => setImportMode("replace")} /> Reemplazar catálogo</label>
+              </div>
+              {importMode === "replace" ? (
+                <label className={styles.confirmLine}><input type="checkbox" checked={replaceConfirmed} onChange={(e) => setReplaceConfirmed(e.target.checked)} /> Confirmo el reemplazo.</label>
+              ) : null}
+              <div className={styles.actions}>
+                <button type="button" className={styles.secondaryButton} onClick={() => setPreview(null)}>Cancelar</button>
+                <button type="button" className={styles.primaryButton} onClick={() => void importFile()} disabled={busy}>Importar catálogo</button>
+              </div>
+            </section>
+          ) : null}
+        </div>
+      ) : null}
+
+      {businessId && tab === "configuracion" && settings ? (
+        <div className={styles.pageStack}>
+          <section className={styles.card}>
+            <span className={styles.eyebrow}>DATOS DEL NEGOCIO</span>
+            <h2>Información que usa MetaBot</h2>
+            <div className={styles.formGrid}>
+              <label><span>Nombre</span><input value={settings.business.name} onChange={(e) => setSettings({ business: { ...settings.business, name: e.target.value } })} /></label>
+              <label><span>Tipo de negocio</span><input value={settings.business.type ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, type: e.target.value } })} placeholder="Hotel, tour operador..." /></label>
+              <label><span>País</span><input value={settings.business.country ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, country: e.target.value } })} /></label>
+              <label><span>Teléfono</span><input value={settings.business.phoneNumber ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, phoneNumber: e.target.value } })} /></label>
+              <label className={styles.fullField}><span>Dirección</span><input value={settings.business.address ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, address: e.target.value } })} /></label>
+              <label className={styles.fullField}><span>Descripción</span><textarea value={settings.business.description ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, description: e.target.value } })} /></label>
+            </div>
+          </section>
+
+          <section className={styles.card}>
+            <span className={styles.eyebrow}>COMPORTAMIENTO DEL BOT</span>
+            <h2>Cómo debe responder</h2>
+            <div className={styles.formGrid}>
+              <label><span>Tono</span><input value={settings.business.botConfig?.tone ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, botConfig: { ...(settings.business.botConfig ?? { systemInstructions: "", welcomeMessage: "", fallbackMessage: "", humanHandoffMessage: "", active: true, tone: "" }), tone: e.target.value } } })} placeholder="amable y breve" /></label>
+              <label><span>Estado</span><select value={settings.business.botConfig?.active === false ? "false" : "true"} onChange={(e) => setSettings({ business: { ...settings.business, botConfig: { ...(settings.business.botConfig ?? { systemInstructions: "", welcomeMessage: "", fallbackMessage: "", humanHandoffMessage: "", tone: "amable y breve", active: true }), active: e.target.value === "true" } } })}><option value="true">Activo</option><option value="false">Pausado</option></select></label>
+              <label className={styles.fullField}><span>Mensaje de bienvenida</span><textarea value={settings.business.botConfig?.welcomeMessage ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, botConfig: { ...(settings.business.botConfig ?? { systemInstructions: "", tone: "amable y breve", fallbackMessage: "", humanHandoffMessage: "", active: true, welcomeMessage: "" }), welcomeMessage: e.target.value } } })} /></label>
+              <label className={styles.fullField}><span>Reglas e instrucciones</span><textarea rows={5} value={settings.business.botConfig?.systemInstructions ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, botConfig: { ...(settings.business.botConfig ?? { tone: "amable y breve", welcomeMessage: "", fallbackMessage: "", humanHandoffMessage: "", active: true, systemInstructions: "" }), systemInstructions: e.target.value } } })} placeholder="Ejemplo: no confirmar disponibilidad sin revisar con recepción..." /></label>
+              <label className={styles.fullField}><span>Cuando no sabe</span><textarea value={settings.business.botConfig?.fallbackMessage ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, botConfig: { ...(settings.business.botConfig ?? { systemInstructions: "", tone: "amable y breve", welcomeMessage: "", humanHandoffMessage: "", active: true, fallbackMessage: "" }), fallbackMessage: e.target.value } } })} /></label>
+              <label className={styles.fullField}><span>Traspaso a humano</span><textarea value={settings.business.botConfig?.humanHandoffMessage ?? ""} onChange={(e) => setSettings({ business: { ...settings.business, botConfig: { ...(settings.business.botConfig ?? { systemInstructions: "", tone: "amable y breve", welcomeMessage: "", fallbackMessage: "", active: true, humanHandoffMessage: "" }), humanHandoffMessage: e.target.value } } })} /></label>
+            </div>
+            <div className={styles.actions}>
+              <button type="button" className={styles.primaryButton} onClick={() => void saveSettings()} disabled={busy}>
+                {busy ? "Guardando…" : "Guardar configuración"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
