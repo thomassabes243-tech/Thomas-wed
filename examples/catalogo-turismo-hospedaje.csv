@@ -1,0 +1,3 @@
+Código,Servicio,Tipo de servicio,Categoría,Descripción,Precio,Precio por,Ubicación,Duración,Capacidad,Check-in,Check-out,Incluye,Amenidades,Disponibilidad,Requiere reserva,Política de cancelación
+HAB-DBL,Habitación Doble,Habitación,Hospedaje,Habitación para dos personas,75,noche,Guanacaste,,2,14:00,11:00,Desayuno,WiFi y aire acondicionado,Sujeto a confirmación,Sí,Consultar condiciones
+TOUR-01,Tour de Naturaleza,Tour,Tours,Actividad guiada,55,persona,Guanacaste,4 horas,8,,,Transporte y guía,,Cupos sujetos a fecha,Sí,Consultar condiciones
