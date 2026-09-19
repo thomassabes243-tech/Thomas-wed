@@ -24,6 +24,11 @@ function isLocationQuestion(value: string) {
   return /\b(donde|dónde|ubicaci[oó]n|direccion|dirección|como llegar|cómo llegar)\b/i.test(value);
 }
 
+function hospitalityKind(value: string) {
+  if (/\b(tour|excursi[oó]n|actividad|pasajero)\b/i.test(value)) return "tour" as const;
+  return "lodging" as const;
+}
+
 function asksForDateAvailability(value: string) {
   return /\b(disponib|reserv|habitaci[oó]n.*(?:hoy|mañana|manana|fecha)|hoy|mañana|manana|esta noche|fin de semana|check.?in|entrada.*fecha)\b/i.test(value);
 }
@@ -97,9 +102,12 @@ export async function answerCatalogQuestion(params: {
     }
 
     if (dateAvailability) {
+      const kind = hospitalityKind(params.query);
       return {
         reply:
-          "No puedo confirmar disponibilidad para una fecha concreta con la información registrada. Puedo ayudarte a pasar la consulta al negocio para confirmar habitación, cupo o reserva.",
+          kind === "tour"
+            ? "No puedo confirmar cupos en tiempo real con la información registrada. Para consultar el tour necesito la fecha y cantidad de personas; el negocio debe confirmar el cupo final."
+            : "No puedo confirmar habitaciones en tiempo real con la información registrada. Para consultar hospedaje necesito fecha de entrada, fecha de salida y cantidad de huéspedes; el negocio debe confirmar la disponibilidad final.",
         found: false,
         requiresHuman: true,
         productIds: [],
@@ -146,7 +154,10 @@ export async function answerCatalogQuestion(params: {
     if (product.cancellationPolicy) details.push(`cancelación: ${product.cancellationPolicy}`);
 
     const price = formatPrice(product.price);
-    if (price) details.push(`precio registrado: ${price}`);
+    if (price) {
+      const basis = product.unit ? ` por ${product.unit.replace(/^por\s+/i, "")}` : "";
+      details.push(`precio registrado: ${price}${basis}`);
+    }
 
     if (!productHasTourismData) {
       const stock = formatStock(product.stock, product.unit);
@@ -160,7 +171,9 @@ export async function answerCatalogQuestion(params: {
 
   const prefix = visible.length === 1 ? "Encontré esta opción:" : "Encontré estas opciones:";
   const availabilityNotice = dateAvailability
-    ? "\nLa disponibilidad para una fecha concreta debe confirmarla el negocio; este catálogo no funciona como inventario de habitaciones/cupos en tiempo real."
+    ? hospitalityKind(params.query) === "tour"
+      ? "\nEl cupo para la fecha solicitada debe confirmarlo el negocio. Para continuar se necesita fecha y cantidad de personas."
+      : "\nLa disponibilidad para la fecha solicitada debe confirmarla el negocio. Para continuar se necesita fecha de entrada, fecha de salida y cantidad de huéspedes."
     : "";
 
   return {
