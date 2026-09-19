@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 
-const COOKIE_NAME = "metabot_catalog_admin";
+const ADMIN_COOKIE = "metabot_catalog_admin";
+const BUSINESS_COOKIE = "metabot_catalog_business";
 
 function secret() {
   const value = process.env.CATALOG_ADMIN_SECRET;
@@ -9,24 +10,29 @@ function secret() {
   return value;
 }
 
-function token() {
-  return createHmac("sha256", secret()).update("metabot-catalog-admin-v1").digest("hex");
+function digest(value: string) {
+  return createHmac("sha256", secret()).update(value).digest("hex");
+}
+
+function safeEqual(a: string, b: string) {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function adminToken() {
+  return digest("metabot-catalog-admin-v1");
 }
 
 export async function hasCatalogAdminSession() {
   const jar = await cookies();
-  const supplied = jar.get(COOKIE_NAME)?.value;
-  if (!supplied) return false;
-
-  const expected = token();
-  const a = Buffer.from(supplied);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const supplied = jar.get(ADMIN_COOKIE)?.value;
+  return Boolean(supplied && safeEqual(supplied, adminToken()));
 }
 
 export async function createCatalogAdminSession() {
   const jar = await cookies();
-  jar.set(COOKIE_NAME, token(), {
+  jar.set(ADMIN_COOKIE, adminToken(), {
     httpOnly: true,
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
@@ -35,9 +41,36 @@ export async function createCatalogAdminSession() {
   });
 }
 
+export async function createCatalogBusinessScope(businessId: string) {
+  const jar = await cookies();
+  const signature = digest(`metabot-catalog-business-v1:${businessId}`);
+  jar.set(BUSINESS_COOKIE, `${businessId}.${signature}`, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 8,
+  });
+}
+
+export async function hasCatalogBusinessScope(businessId: string) {
+  const jar = await cookies();
+  const value = jar.get(BUSINESS_COOKIE)?.value ?? "";
+  const separator = value.lastIndexOf(".");
+  if (separator <= 0) return false;
+
+  const scopedBusinessId = value.slice(0, separator);
+  const suppliedSignature = value.slice(separator + 1);
+  if (scopedBusinessId !== businessId) return false;
+
+  const expectedSignature = digest(`metabot-catalog-business-v1:${businessId}`);
+  return safeEqual(suppliedSignature, expectedSignature);
+}
+
 export async function clearCatalogAdminSession() {
   const jar = await cookies();
-  jar.delete(COOKIE_NAME);
+  jar.delete(ADMIN_COOKIE);
+  jar.delete(BUSINESS_COOKIE);
 }
 
 export function verifyCatalogAdminPassword(value: string) {
