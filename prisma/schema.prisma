@@ -136,6 +136,17 @@ model Product {
   presentation         String?
   unit                 String?
   requiresPrescription Boolean?
+  serviceType          String?
+  location             String?
+  duration             String?
+  capacity             Int?
+  checkInTime          String?
+  checkOutTime         String?
+  includes             String?
+  amenities            String?
+  availabilityNote     String?
+  reservationRequired  Boolean?
+  cancellationPolicy   String?
   searchText           String                 @default("")
   active               Boolean               @default(true)
   sourceImportId       String?
