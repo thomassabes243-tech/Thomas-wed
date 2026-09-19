@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { parseCatalogBuffer } from "../lib/catalog/parser";
 import { normalizeCatalogSearch } from "../lib/catalog/normalize";
 import { normalizeProductRow } from "../lib/catalog/importer";
+import { catalogSearchTokens } from "../lib/catalog/search";
 
 const sourceRows = Array.from({ length: 1500 }, (_, index) => ({
   "Código producto": `SKU-${String(index + 1).padStart(5, "0")}`,
@@ -86,6 +87,18 @@ assert.equal(room.searchText.includes("habitacion doble"), true);
 assert.equal(room.searchText.includes("2 personas"), true);
 assert.equal(room.searchText.includes("check in 14 00"), true);
 assert.equal(room.searchText.includes("cancelacion 24 horas"), true);
+assert.deepEqual(
+  catalogSearchTokens("¿Cuánto cuesta la habitación doble para 2 personas mañana?"),
+  ["habitacion", "doble", "2"],
+);
+assert.deepEqual(
+  catalogSearchTokens("¿Qué tours tienen en Rincón de la Vieja?"),
+  ["tour", "rincon", "vieja"],
+);
+assert.deepEqual(
+  catalogSearchTokens("¿A qué hora es el check-in?"),
+  ["check", "in"],
+);
 
 const ambiguousCapacityCsv = Buffer.from(
   "Código,Servicio,Capacidad\nA1,Habitación Familiar,2 adultos + 2 niños\n",
