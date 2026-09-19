@@ -40,7 +40,7 @@ function decimal(value: unknown): Prisma.Decimal | null {
 
   let raw = String(value).trim().replace(/\s/g, "");
   raw = raw.replace(/[^0-9,.-]/g, "");
-  if (!raw) return null;
+  if (!raw) throw new Error("valor numérico inválido");
 
   const lastComma = raw.lastIndexOf(",");
   const lastDot = raw.lastIndexOf(".");
