@@ -1,11 +1,8 @@
-import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { hasCatalogAdminSession } from "./admin-session";
 
-export function assertCatalogAdmin(request: NextRequest) {
-  const expected = process.env.CATALOG_ADMIN_SECRET;
-  if (!expected) throw new Error("CATALOG_ADMIN_SECRET no está configurado.");
-  const supplied = request.headers.get("x-metabot-admin-secret");
-  if (!supplied || supplied !== expected) {
+export async function assertCatalogAdmin() {
+  if (!(await hasCatalogAdminSession())) {
     const error = new Error("No autorizado.");
     (error as Error & { status?: number }).status = 401;
     throw error;
