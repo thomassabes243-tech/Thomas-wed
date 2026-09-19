@@ -78,10 +78,24 @@ export function parseCatalogBuffer(buffer: Buffer, fileType: "csv" | "xlsx"): Pa
 
 export function detectCatalogFileType(filename: string, mimeType?: string | null): "csv" | "xlsx" {
   const lower = filename.toLowerCase();
-  if (lower.endsWith(".csv") || mimeType === "text/csv") return "csv";
-  if (
-    lower.endsWith(".xlsx") ||
-    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  ) return "xlsx";
-  throw new Error("Formato no permitido. Use CSV o XLSX.");
+  const mime = (mimeType ?? "").toLowerCase().trim();
+
+  if (lower.endsWith(".csv")) {
+    const allowed = new Set(["", "text/csv", "text/plain", "application/vnd.ms-excel", "application/octet-stream"]);
+    if (!allowed.has(mime)) throw new Error("El tipo MIME no coincide con un archivo CSV permitido.");
+    return "csv";
+  }
+
+  if (lower.endsWith(".xlsx")) {
+    const allowed = new Set([
+      "",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/octet-stream",
+      "application/zip",
+    ]);
+    if (!allowed.has(mime)) throw new Error("El tipo MIME no coincide con un archivo XLSX permitido.");
+    return "xlsx";
+  }
+
+  throw new Error("Formato no permitido. Use únicamente archivos .csv o .xlsx.");
 }
