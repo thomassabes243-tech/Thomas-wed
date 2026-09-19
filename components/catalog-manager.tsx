@@ -50,6 +50,17 @@ const fields = [
   ["presentation", "Presentación"],
   ["unit", "Unidad"],
   ["requiresPrescription", "Requiere receta"],
+  ["serviceType", "Tipo de servicio / habitación"],
+  ["location", "Ubicación / destino"],
+  ["duration", "Duración"],
+  ["capacity", "Capacidad de personas"],
+  ["checkInTime", "Hora de check-in"],
+  ["checkOutTime", "Hora de check-out"],
+  ["includes", "Qué incluye"],
+  ["amenities", "Comodidades / amenidades"],
+  ["availabilityNote", "Nota de disponibilidad"],
+  ["reservationRequired", "Requiere reserva"],
+  ["cancellationPolicy", "Política de cancelación"],
 ] as const;
 
 export default function CatalogManager() {
@@ -411,7 +422,7 @@ export default function CatalogManager() {
             <input
               value={testQuery}
               onChange={(event) => setTestQuery(event.target.value)}
-              placeholder="Ejemplo: acetaminofen 500"
+              placeholder="Ejemplo: habitación doble para 2 personas"
               disabled={!businessId || testingAnswer}
             />
           </label>
