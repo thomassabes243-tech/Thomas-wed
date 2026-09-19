@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS "Product" (
   "presentation" TEXT,
   "unit" TEXT,
   "requiresPrescription" BOOLEAN,
+  "searchText" TEXT NOT NULL DEFAULT '',
   "active" BOOLEAN NOT NULL DEFAULT true,
   "sourceImportId" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -88,6 +89,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "Product_businessId_externalCode_key" ON "Prod
 CREATE INDEX IF NOT EXISTS "Product_businessId_active_idx" ON "Product"("businessId","active");
 CREATE INDEX IF NOT EXISTS "Product_businessId_name_idx" ON "Product"("businessId","name");
 CREATE INDEX IF NOT EXISTS "Product_businessId_category_idx" ON "Product"("businessId","category");
+CREATE INDEX IF NOT EXISTS "Product_businessId_searchText_idx" ON "Product"("businessId","searchText");
 CREATE INDEX IF NOT EXISTS "CatalogImport_businessId_createdAt_idx" ON "CatalogImport"("businessId","createdAt");
 CREATE INDEX IF NOT EXISTS "CatalogImport_businessId_status_idx" ON "CatalogImport"("businessId","status");
 CREATE INDEX IF NOT EXISTS "CatalogImportChange_importId_action_idx" ON "CatalogImportChange"("importId","action");
