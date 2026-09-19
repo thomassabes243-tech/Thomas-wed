@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { detectCatalogFileType, parseCatalogBuffer } from "@/lib/catalog/parser";
 import { normalizeProductRow } from "@/lib/catalog/importer";
-import { assertBusinessExists, assertCatalogAdmin } from "@/lib/catalog/security";
+import { assertCatalogBusinessAccess } from "@/lib/catalog/security";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,6 @@ function maxBytes() {
 
 export async function POST(request: NextRequest) {
   try {
-    await assertCatalogAdmin();
     const form = await request.formData();
     const businessId = String(form.get("businessId") ?? "").trim();
     const file = form.get("file");
@@ -33,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const business = await assertBusinessExists(businessId);
+    const business = await assertCatalogBusinessAccess(businessId);
     const fileType = detectCatalogFileType(file.name, file.type);
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileHash = createHash("sha256").update(buffer).digest("hex");
