@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "@/app/catalog/catalog.module.css";
 
 type Business = { id: string; name: string; country: string | null };
-type Tab = "resumen" | "catalogo" | "simulador" | "importar" | "configuracion";
+type Tab = "resumen" | "catalogo" | "simulador" | "conversaciones" | "importar" | "configuracion";
 
 type Dashboard = {
   business: Business & {
@@ -55,6 +55,15 @@ type Product = {
   reservationRequired: boolean | null;
   cancellationPolicy: string | null;
   active: boolean;
+};
+
+type ConversationItem = {
+  id: string;
+  status: string;
+  assignedToHuman: boolean;
+  lastMessageAt: string;
+  customer: { id: string; name: string | null; whatsappNumber: string };
+  messages: Array<{ id: string; direction: "inbound" | "outbound"; content: string; createdAt: string }>;
 };
 
 type Settings = {
@@ -169,6 +178,7 @@ export default function CatalogManager() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -225,7 +235,7 @@ export default function CatalogManager() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "No se pudo seleccionar la empresa.");
       setBusinessId(nextId);
-      await Promise.all([loadDashboard(nextId), loadProducts(nextId), loadSettings(nextId)]);
+      await Promise.all([loadDashboard(nextId), loadProducts(nextId), loadSettings(nextId), loadConversations(nextId)]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo seleccionar la empresa.");
     } finally {
@@ -262,6 +272,34 @@ export default function CatalogManager() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? "No se pudo cargar la configuración.");
     setSettings(data);
+  }
+
+  async function loadConversations(id = businessId) {
+    if (!id) return;
+    const response = await fetch(`/api/catalog/conversations?businessId=${encodeURIComponent(id)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error ?? "No se pudieron cargar los chats.");
+    setConversations(data.conversations ?? []);
+  }
+
+  async function updateConversation(conversationId: string, action: "take" | "release" | "close") {
+    if (!businessId) return;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/catalog/conversations", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ businessId, conversationId, action }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "No se pudo actualizar el chat.");
+      await Promise.all([loadConversations(), loadDashboard()]);
+      setMessage(action === "close" ? "Conversación cerrada." : action === "take" ? "Chat tomado por una persona." : "Chat devuelto al bot.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo actualizar el chat.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   useEffect(() => {
@@ -340,14 +378,20 @@ export default function CatalogManager() {
     setTestingAnswer(true);
     setBotAnswer("");
     try {
-      const response = await fetch("/api/catalog/answer", {
+      const response = await fetch("/api/catalog/simulate-inbound", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ businessId, query: testQuery }),
+        body: JSON.stringify({
+          businessId,
+          message: testQuery,
+          customerNumber: "preview-customer",
+          customerName: "Cliente de prueba",
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "No se pudo consultar.");
       setBotAnswer(data.reply ?? "");
+      await Promise.all([loadConversations(), loadDashboard()]);
     } catch (error) {
       setBotAnswer(error instanceof Error ? error.message : "No se pudo consultar.");
     } finally {
@@ -496,6 +540,7 @@ export default function CatalogManager() {
           ["resumen", "Resumen"],
           ["catalogo", "Catálogo"],
           ["simulador", "Probar bot"],
+          ["conversaciones", "Chats"],
           ["importar", "Importar"],
           ["configuracion", "Configurar"],
         ].map(([value, label]) => (
@@ -743,6 +788,59 @@ export default function CatalogManager() {
                 <button key={item} type="button" onClick={() => setTestQuery(item)}>{item}</button>
               ))}
             </div>
+          </section>
+        </div>
+      ) : null}
+
+      {businessId && tab === "conversaciones" ? (
+        <div className={styles.pageStack}>
+          <section className={styles.toolbarCard}>
+            <div>
+              <span className={styles.eyebrow}>BANDEJA DE ATENCIÓN</span>
+              <h2>Conversaciones y traspaso a humano</h2>
+            </div>
+            <button type="button" className={styles.secondaryButton} onClick={() => void loadConversations()}>
+              Actualizar
+            </button>
+          </section>
+
+          <section className={styles.conversationList}>
+            {!conversations.length ? (
+              <div className={styles.emptyState}>
+                <h3>Todavía no hay conversaciones</h3>
+                <p>Probá el bot desde la pestaña “Probar bot” y el chat aparecerá acá.</p>
+              </div>
+            ) : conversations.map((conversation) => (
+              <article className={styles.conversationCard} key={conversation.id}>
+                <div className={styles.conversationHeader}>
+                  <div>
+                    <strong>{conversation.customer.name || conversation.customer.whatsappNumber}</strong>
+                    <span>{conversation.customer.whatsappNumber} · {new Date(conversation.lastMessageAt).toLocaleString()}</span>
+                  </div>
+                  <span className={conversation.status === "human_required" ? styles.humanBadge : styles.activeBadge}>
+                    {conversation.status === "human_required" ? "Requiere humano" : conversation.status}
+                  </span>
+                </div>
+
+                <div className={styles.miniThread}>
+                  {conversation.messages.slice(-6).map((msg) => (
+                    <div key={msg.id} className={msg.direction === "inbound" ? styles.inboundMini : styles.outboundMini}>
+                      <b>{msg.direction === "inbound" ? "Cliente" : "MetaBot"}</b>
+                      <span>{msg.content}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className={styles.cardActions}>
+                  {!conversation.assignedToHuman ? (
+                    <button type="button" onClick={() => void updateConversation(conversation.id, "take")}>Tomar chat</button>
+                  ) : (
+                    <button type="button" onClick={() => void updateConversation(conversation.id, "release")}>Devolver al bot</button>
+                  )}
+                  <button type="button" onClick={() => void updateConversation(conversation.id, "close")}>Cerrar</button>
+                </div>
+              </article>
+            ))}
           </section>
         </div>
       ) : null}
