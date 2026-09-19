@@ -15,6 +15,8 @@ type Preview = {
   previewRows: Record<string, unknown>[];
   warnings: string[];
   duplicateRows: number[];
+  validationErrors: Array<{ row: number; reason: string }>;
+  existingMatches: Array<{ id: string; name: string; sku: string | null; externalCode: string | null }>;
 };
 type ImportResult = {
   processed: number;
@@ -220,6 +222,24 @@ export default function CatalogManager() {
           {preview.duplicateRows.length ? (
             <div className={styles.warningBox}>
               Posibles duplicados dentro del archivo en filas: {preview.duplicateRows.join(", ")}
+            </div>
+          ) : null}
+
+          {preview.validationErrors?.length ? (
+            <div className={styles.warningBox}>
+              <strong>Errores detectados en la revisión:</strong>
+              {preview.validationErrors.map((item) => (
+                <p key={`${item.row}-${item.reason}`}>Fila {item.row}: {item.reason}</p>
+              ))}
+            </div>
+          ) : null}
+
+          {preview.existingMatches?.length ? (
+            <div className={styles.warningBox}>
+              <strong>Productos que ya podrían existir en esta empresa:</strong>
+              {preview.existingMatches.map((item) => (
+                <p key={item.id}>{item.name} · {item.sku ?? item.externalCode ?? "sin código"}</p>
+              ))}
             </div>
           ) : null}
 
