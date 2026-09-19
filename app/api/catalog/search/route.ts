@@ -4,7 +4,7 @@ import { assertBusinessExists, assertCatalogAdmin } from "@/lib/catalog/security
 
 export async function POST(request: NextRequest) {
   try {
-    assertCatalogAdmin(request);
+    await assertCatalogAdmin();
     const body = (await request.json()) as { businessId?: string; query?: string; limit?: number };
     const businessId = body.businessId?.trim() ?? "";
     const query = body.query?.trim() ?? "";
