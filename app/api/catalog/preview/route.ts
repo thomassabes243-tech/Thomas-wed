@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -33,7 +34,9 @@ export async function POST(request: NextRequest) {
 
     const business = await assertBusinessExists(businessId);
     const fileType = detectCatalogFileType(file.name, file.type);
-    const parsed = parseCatalogBuffer(Buffer.from(await file.arrayBuffer()), fileType);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const fileHash = createHash("sha256").update(buffer).digest("hex");
+    const parsed = parseCatalogBuffer(buffer, fileType);
 
     const identifiers = new Set<string>();
     const duplicateRows: number[] = [];
@@ -59,6 +62,7 @@ export async function POST(request: NextRequest) {
         businessId,
         filename: file.name,
         fileType,
+        fileHash,
         status: "review_required",
         totalRows: parsed.totalRows,
         mapping: parsed.suggestedMapping as Prisma.InputJsonObject,
@@ -71,6 +75,7 @@ export async function POST(request: NextRequest) {
       business,
       filename: file.name,
       fileType,
+      fileHash,
       totalRows: parsed.totalRows,
       headers: parsed.headers,
       suggestedMapping: parsed.suggestedMapping,
