@@ -166,6 +166,7 @@ model CatalogImport {
   createdAt     DateTime               @default(now())
   completedAt   DateTime?
   errorSummary  String?
+  fileHash      String?
   mapping       Json?
   preview       Json?
   createdById   String?
