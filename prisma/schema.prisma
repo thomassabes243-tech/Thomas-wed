@@ -136,6 +136,7 @@ model Product {
   presentation         String?
   unit                 String?
   requiresPrescription Boolean?
+  searchText           String                 @default("")
   active               Boolean               @default(true)
   sourceImportId       String?
   createdAt            DateTime              @default(now())
@@ -149,6 +150,7 @@ model Product {
   @@index([businessId, active])
   @@index([businessId, name])
   @@index([businessId, category])
+  @@index([businessId, searchText])
 }
 
 model CatalogImport {
