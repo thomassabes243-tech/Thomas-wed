@@ -31,6 +31,10 @@ jobs:
         run: npx prisma generate
       - name: Typecheck
         run: npm run typecheck
+      - name: Catalog importer smoke test
+        run: npx --yes tsx scripts/catalog-importer-smoke.ts
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/metabot
       - name: Lint
         run: npm run lint
       - name: Build
