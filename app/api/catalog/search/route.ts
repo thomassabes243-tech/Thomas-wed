@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchProducts } from "@/lib/catalog/search";
-import { assertBusinessExists, assertCatalogAdmin } from "@/lib/catalog/security";
+import { assertCatalogBusinessAccess } from "@/lib/catalog/security";
 
 export async function POST(request: NextRequest) {
   try {
-    await assertCatalogAdmin();
     const body = (await request.json()) as { businessId?: string; query?: string; limit?: number };
     const businessId = body.businessId?.trim() ?? "";
     const query = body.query?.trim() ?? "";
@@ -13,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "businessId y query son requeridos." }, { status: 400 });
     }
 
-    await assertBusinessExists(businessId);
+    await assertCatalogBusinessAccess(businessId);
     const products = await searchProducts({ businessId, query, limit: body.limit });
 
     return NextResponse.json({
