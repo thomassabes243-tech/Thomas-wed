@@ -84,6 +84,18 @@ assert.equal(room.checkOutTime, "11:00");
 assert.equal(room.reservationRequired, true);
 assert.equal(room.searchText.includes("habitacion doble"), true);
 assert.equal(room.searchText.includes("2 personas"), true);
+assert.equal(room.searchText.includes("check in 14 00"), true);
+assert.equal(room.searchText.includes("cancelacion 24 horas"), true);
+
+const ambiguousCapacityCsv = Buffer.from(
+  "Código,Servicio,Capacidad\nA1,Habitación Familiar,2 adultos + 2 niños\n",
+  "utf8",
+);
+const ambiguousCapacity = parseCatalogBuffer(ambiguousCapacityCsv, "csv");
+assert.throws(
+  () => normalizeProductRow(ambiguousCapacity.rows[0], ambiguousCapacity.suggestedMapping),
+  /capacidad inválida/,
+);
 
 assert.throws(() => parseCatalogBuffer(Buffer.from(""), "csv"), /vacío|hojas|datos/i);
 
