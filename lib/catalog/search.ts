@@ -1,8 +1,19 @@
 import { db } from "@/lib/db";
 import { normalizeCatalogSearch } from "./normalize";
 
-function normalizeQuery(value: string) {
-  return normalizeCatalogSearch(value);
+const STOP_WORDS = new Set([
+  "a","al","algo","con","de","del","el","en","es","hay","la","las","lo","los",
+  "me","para","por","que","quiero","si","tienen","tiene","un","una","unos","unas",
+  "hoy","manana","mañana","fecha","disponible","disponibilidad","reservar","reserva",
+]);
+
+function queryTokens(value: string) {
+  const normalized = normalizeCatalogSearch(value);
+  if (!normalized) return [];
+  return normalized
+    .split(" ")
+    .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
+    .slice(0, 8);
 }
 
 export async function searchProducts(params: {
@@ -10,15 +21,15 @@ export async function searchProducts(params: {
   query: string;
   limit?: number;
 }) {
-  const query = normalizeQuery(params.query);
-  if (!query) return [];
+  const tokens = queryTokens(params.query);
+  if (!tokens.length) return [];
 
   const limit = Math.max(1, Math.min(params.limit ?? 8, 20));
   return db.product.findMany({
     where: {
       businessId: params.businessId,
       active: true,
-      searchText: { contains: query },
+      AND: tokens.map((token) => ({ searchText: { contains: token } })),
     },
     select: {
       id: true,
