@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { hasCatalogAdminSession } from "./admin-session";
+import { hasCatalogAdminSession, hasCatalogBusinessScope } from "./admin-session";
 
 export async function assertCatalogAdmin() {
   if (!(await hasCatalogAdminSession())) {
@@ -20,4 +20,14 @@ export async function assertBusinessExists(businessId: string) {
     throw error;
   }
   return business;
+}
+
+export async function assertCatalogBusinessAccess(businessId: string) {
+  await assertCatalogAdmin();
+  if (!(await hasCatalogBusinessScope(businessId))) {
+    const error = new Error("La sesión no está autorizada para esta empresa.");
+    (error as Error & { status?: number }).status = 403;
+    throw error;
+  }
+  return assertBusinessExists(businessId);
 }
