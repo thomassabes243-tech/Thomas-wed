@@ -20,6 +20,10 @@ function isHospitalityQuery(value: string) {
   return /\b(hotel|hostal|hosped|cabina|lodge|habitaci[oó]n|tour|excursi[oó]n|check.?in|check.?out|reserva|hu[eé]sped|pasajero)\b/i.test(value);
 }
 
+function isLocationQuestion(value: string) {
+  return /\b(donde|dónde|ubicaci[oó]n|direccion|dirección|como llegar|cómo llegar)\b/i.test(value);
+}
+
 function asksForDateAvailability(value: string) {
   return /\b(disponib|reserv|habitaci[oó]n.*(?:hoy|mañana|manana|fecha)|hoy|mañana|manana|esta noche|fin de semana|check.?in|entrada.*fecha)\b/i.test(value);
 }
@@ -40,7 +44,7 @@ export async function answerCatalogQuestion(params: {
 }): Promise<CatalogAnswer> {
   const business = await db.business.findUnique({
     where: { id: params.businessId },
-    select: { id: true, type: true },
+    select: { id: true, name: true, type: true, address: true },
   });
 
   if (!business) {
@@ -66,6 +70,15 @@ export async function answerCatalogQuestion(params: {
   const hospitality = isHospitalityBusiness(business.type) || isHospitalityQuery(params.query);
   const dateAvailability = hospitality && asksForDateAvailability(params.query);
 
+  if (hospitality && isLocationQuestion(params.query) && business.address) {
+    return {
+      reply: `La ubicación registrada de ${business.name} es: ${business.address}.`,
+      found: true,
+      requiresHuman: false,
+      productIds: [],
+    };
+  }
+
   const products = await searchProducts({
     businessId: params.businessId,
     query: params.query,
@@ -73,6 +86,16 @@ export async function answerCatalogQuestion(params: {
   });
 
   if (!products.length) {
+    if (hospitality && isLocationQuestion(params.query)) {
+      return {
+        reply:
+          "No tengo una ubicación suficientemente confirmada en los datos registrados. Puedo pasar la consulta al negocio para que te comparta la dirección correcta.",
+        found: false,
+        requiresHuman: true,
+        productIds: [],
+      };
+    }
+
     if (dateAvailability) {
       return {
         reply:
