@@ -1,17 +1,31 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 
 const ADMIN_COOKIE = "metabot_catalog_admin";
 const BUSINESS_COOKIE = "metabot_catalog_business";
+const PREVIEW_ADMIN_PASSWORD_HASH =
+  "7d397137f7b00cf31d399da469b35663f1edc978ddb9fa51f39975960516bc77";
 
-function secret() {
-  const value = process.env.CATALOG_ADMIN_SECRET;
-  if (!value) throw new Error("CATALOG_ADMIN_SECRET no está configurado.");
-  return value;
+function sessionSecret() {
+  const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
+  if (explicit) return explicit;
+
+  if (process.env.VERCEL_ENV === "preview") {
+    const databaseUrl = process.env.DATABASE_URL?.trim();
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL no está configurado para Preview.");
+    }
+
+    return createHash("sha256")
+      .update(`metabot-catalog-preview-session:${databaseUrl}`)
+      .digest("hex");
+  }
+
+  throw new Error("CATALOG_ADMIN_SECRET no está configurado.");
 }
 
 function digest(value: string) {
-  return createHmac("sha256", secret()).update(value).digest("hex");
+  return createHmac("sha256", sessionSecret()).update(value).digest("hex");
 }
 
 function safeEqual(a: string, b: string) {
@@ -74,7 +88,13 @@ export async function clearCatalogAdminSession() {
 }
 
 export function verifyCatalogAdminPassword(value: string) {
-  const expected = Buffer.from(secret());
-  const supplied = Buffer.from(value);
-  return expected.length === supplied.length && timingSafeEqual(expected, supplied);
+  const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
+  if (explicit) return safeEqual(value, explicit);
+
+  if (process.env.VERCEL_ENV === "preview") {
+    const suppliedHash = createHash("sha256").update(value).digest("hex");
+    return safeEqual(suppliedHash, PREVIEW_ADMIN_PASSWORD_HASH);
+  }
+
+  return false;
 }
