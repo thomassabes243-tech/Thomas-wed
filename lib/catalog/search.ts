@@ -7,6 +7,7 @@ const STOP_WORDS = new Set([
   "hoy","manana","fecha","disponible","disponibilidad","reservar","reserva",
   "cuanto","cuesta","costo","precio","incluye","incluido","incluidos","hora","horario",
   "cual","cuales","dame","informacion","sobre","necesito","busco","personas","persona",
+  "politica","requiere",
 ]);
 
 const TOKEN_EQUIVALENTS: Record<string, string> = {
