@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS "CatalogImport" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "completedAt" TIMESTAMP(3),
   "errorSummary" TEXT,
+  "fileHash" TEXT,
   "mapping" JSONB,
   "preview" JSONB,
   "createdById" TEXT,
