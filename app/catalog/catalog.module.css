@@ -6,3 +6,11 @@
 
 .conversationList{display:grid;gap:12px}.conversationCard{background:#fff;border:1px solid #dce5eb;border-radius:17px;padding:15px;display:grid;gap:12px}.conversationHeader{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.conversationHeader>div{display:grid;gap:3px}.conversationHeader span{font-size:12px;color:#6c7f8e}.humanBadge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#fff1df;color:#9a5a00;font-size:11px;font-weight:900;white-space:nowrap}.miniThread{display:grid;gap:7px;background:#f7f9fb;border-radius:13px;padding:10px}.inboundMini,.outboundMini{display:grid;gap:3px;padding:8px 10px;border-radius:11px;font-size:12px;max-width:88%}.inboundMini{justify-self:start;background:#fff;border:1px solid #e0e7ec}.outboundMini{justify-self:end;background:#e9f3ff;border:1px solid #cfe3fb}.inboundMini b,.outboundMini b{font-size:11px;color:#496175}.inboundMini span,.outboundMini span{white-space:pre-wrap;line-height:1.4}
 @media(max-width:640px){.conversationHeader{flex-direction:column}.humanBadge{align-self:flex-start}.inboundMini,.outboundMini{max-width:95%}}
+
+.clientGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.clientCard{border:1px solid #dce5eb;border-radius:17px;padding:15px;display:grid;gap:13px;background:#fff}
+.clientCard h3{margin:8px 0 3px}
+.clientCard p{margin:0;color:#667b8a;font-size:13px}
+.clientMeta{display:grid;gap:6px;font-size:12px;color:#526878}
+.clientCard>.primaryButton{width:100%}
+@media(max-width:720px){.clientGrid{grid-template-columns:1fr}}
