@@ -273,7 +273,7 @@ export async function importCatalogRows(params: {
     }
   }
 
-  if (params.mode === CatalogImportMode.replace) {
+  if (params.mode === CatalogImportMode.replace && summary.rejected === 0) {
     const toDeactivate = await db.product.findMany({
       where: {
         businessId: params.businessId,
@@ -301,6 +301,11 @@ export async function importCatalogRows(params: {
     }
   }
 
+  const replacementWarning =
+    params.mode === CatalogImportMode.replace && summary.rejected > 0
+      ? "No se desactivaron productos ausentes porque la importación contiene filas rechazadas. Corrija el archivo y vuelva a revisar antes de reemplazar el catálogo."
+      : null;
+
   await db.catalogImport.update({
     where: { id: params.importId },
     data: {
@@ -309,6 +314,7 @@ export async function importCatalogRows(params: {
       updatedRows: summary.updated,
       unchangedRows: summary.unchanged,
       rejectedRows: summary.rejected,
+      errorSummary: replacementWarning,
       completedAt: new Date(),
     },
   });
