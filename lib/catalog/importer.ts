@@ -142,8 +142,14 @@ export function normalizeProductRow(row: CatalogSourceRow, mapping: ColumnMappin
       location,
       duration,
       capacity === null ? null : `${capacity} personas`,
+      description,
       includes,
       amenities,
+      availabilityNote,
+      checkInTime ? `check in ${checkInTime}` : null,
+      checkOutTime ? `check out ${checkOutTime}` : null,
+      cancellationPolicy ? `cancelacion ${cancellationPolicy}` : null,
+      reservationRequired === true ? "reserva requerida" : null,
     ]),
   };
 }
