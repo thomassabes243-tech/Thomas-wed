@@ -37,6 +37,11 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const fileHash = createHash("sha256").update(buffer).digest("hex");
     const parsed = parseCatalogBuffer(buffer, fileType);
+    if (parsed.suggestedMapping.availabilityNote) {
+      parsed.warnings.push(
+        "La disponibilidad importada se tratará como información registrada, no como disponibilidad confirmada para una fecha en tiempo real.",
+      );
+    }
 
     const identifiers = new Set<string>();
     const duplicateRows: number[] = [];
