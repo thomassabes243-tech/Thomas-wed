@@ -5,7 +5,26 @@ const STOP_WORDS = new Set([
   "a","al","algo","con","de","del","el","en","es","hay","la","las","lo","los",
   "me","para","por","que","quiero","si","tienen","tiene","un","una","unos","unas",
   "hoy","manana","mañana","fecha","disponible","disponibilidad","reservar","reserva",
+  "cuanto","cuánto","cuesta","costo","precio","incluye","incluido","incluidos","hora","horario",
+  "cual","cuál","cuales","cuáles","dame","informacion","información","sobre","necesito","busco",
+  "personas","persona",
 ]);
+
+const TOKEN_EQUIVALENTS: Record<string, string> = {
+  habitaciones: "habitacion",
+  cuarto: "habitacion",
+  cuartos: "habitacion",
+  rooms: "habitacion",
+  tours: "tour",
+  excursiones: "excursion",
+  cabinas: "cabina",
+  huespedes: "huesped",
+  huéspedes: "huesped",
+};
+
+function normalizeToken(token: string) {
+  return TOKEN_EQUIVALENTS[token] ?? token;
+}
 
 function queryTokens(value: string) {
   const normalized = normalizeCatalogSearch(value);
