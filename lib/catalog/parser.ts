@@ -31,9 +31,6 @@ export function parseCatalogBuffer(buffer: Buffer, fileType: "csv" | "xlsx"): Pa
       : XLSX.read(buffer, {
           type: "buffer",
           cellDates: false,
-    cellFormula: false,
-    cellHTML: false,
-    raw: true,
           cellFormula: false,
           cellHTML: false,
           raw: true,
@@ -94,7 +91,13 @@ export function detectCatalogFileType(filename: string, mimeType?: string | null
   const mime = (mimeType ?? "").toLowerCase().trim();
 
   if (lower.endsWith(".csv")) {
-    const allowed = new Set(["", "text/csv", "text/plain", "application/vnd.ms-excel", "application/octet-stream"]);
+    const allowed = new Set([
+      "",
+      "text/csv",
+      "text/plain",
+      "application/vnd.ms-excel",
+      "application/octet-stream",
+    ]);
     if (!allowed.has(mime)) throw new Error("El tipo MIME no coincide con un archivo CSV permitido.");
     return "csv";
   }
