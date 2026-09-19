@@ -4,10 +4,9 @@ import { normalizeCatalogSearch } from "./normalize";
 const STOP_WORDS = new Set([
   "a","al","algo","con","de","del","el","en","es","hay","la","las","lo","los",
   "me","para","por","que","quiero","si","tienen","tiene","un","una","unos","unas",
-  "hoy","manana","mañana","fecha","disponible","disponibilidad","reservar","reserva",
-  "cuanto","cuánto","cuesta","costo","precio","incluye","incluido","incluidos","hora","horario",
-  "cual","cuál","cuales","cuáles","dame","informacion","información","sobre","necesito","busco",
-  "personas","persona",
+  "hoy","manana","fecha","disponible","disponibilidad","reservar","reserva",
+  "cuanto","cuesta","costo","precio","incluye","incluido","incluidos","hora","horario",
+  "cual","cuales","dame","informacion","sobre","necesito","busco","personas","persona",
 ]);
 
 const TOKEN_EQUIVALENTS: Record<string, string> = {
@@ -19,7 +18,6 @@ const TOKEN_EQUIVALENTS: Record<string, string> = {
   excursiones: "excursion",
   cabinas: "cabina",
   huespedes: "huesped",
-  huéspedes: "huesped",
 };
 
 function normalizeToken(token: string) {
@@ -29,9 +27,11 @@ function normalizeToken(token: string) {
 function queryTokens(value: string) {
   const normalized = normalizeCatalogSearch(value);
   if (!normalized) return [];
+
   return normalized
     .split(" ")
-    .filter((token) => (token.length >= 2 || /^\\d+$/.test(token)) && !STOP_WORDS.has(token))
+    .map(normalizeToken)
+    .filter((token) => (token.length >= 2 || /^\d+$/.test(token)) && !STOP_WORDS.has(token))
     .slice(0, 8);
 }
 
