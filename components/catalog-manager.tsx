@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import styles from "@/app/catalog/catalog.module.css";
 
-type Business = { id: string; name: string; country: string | null };
-type Tab = "resumen" | "catalogo" | "simulador" | "conversaciones" | "importar" | "configuracion";
+type Business = { id: string; name: string; country: string | null; type?: string | null; phoneNumber?: string | null; address?: string | null };
+type Tab = "clientes" | "resumen" | "catalogo" | "simulador" | "conversaciones" | "importar" | "configuracion";
 
 type Dashboard = {
   business: Business & {
@@ -172,7 +172,7 @@ function productToDraft(product: Product): ProductDraft {
 }
 
 export default function CatalogManager() {
-  const [tab, setTab] = useState<Tab>("resumen");
+  const [tab, setTab] = useState<Tab>("clientes");
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [businessId, setBusinessId] = useState("");
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -181,6 +181,15 @@ export default function CatalogManager() {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showNewBusiness, setShowNewBusiness] = useState(false);
+  const [businessDraft, setBusinessDraft] = useState({
+    name: "",
+    type: "Farmacia",
+    country: "Costa Rica",
+    phoneNumber: "",
+    address: "",
+    description: "",
+  });
 
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -200,15 +209,58 @@ export default function CatalogManager() {
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
 
   useEffect(() => {
-    fetch("/api/catalog/businesses")
-      .then((response) => response.json())
-      .then((data) => {
-        const list = data.businesses ?? [];
-        setBusinesses(list);
-        if (list.length === 1) void selectBusiness(list[0].id);
-      })
-      .catch(() => setMessage("No se pudieron cargar las empresas."));
+    void loadBusinesses();
   }, []);
+
+  async function loadBusinesses() {
+    try {
+      const response = await fetch("/api/catalog/businesses");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "No se pudieron cargar las empresas.");
+      const list = data.businesses ?? [];
+      setBusinesses(list);
+      if (!list.length) setShowNewBusiness(true);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudieron cargar las empresas.");
+    }
+  }
+
+  async function createBusiness() {
+    if (!businessDraft.name.trim() || !businessDraft.type.trim()) {
+      setMessage("Poné el nombre de la empresa y el tipo de negocio.");
+      return;
+    }
+
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/catalog/businesses", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(businessDraft),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "No se pudo crear la empresa.");
+
+      await loadBusinesses();
+      setShowNewBusiness(false);
+      setBusinessDraft({
+        name: "",
+        type: "Farmacia",
+        country: "Costa Rica",
+        phoneNumber: "",
+        address: "",
+        description: "",
+      });
+      await selectBusiness(data.business.id);
+      setTab("resumen");
+      setMessage(`${data.business.name} creada. Ya podés cargar su información y probar el bot.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo crear la empresa.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const selectedBusiness = useMemo(
     () => businesses.find((business) => business.id === businessId),
@@ -537,6 +589,7 @@ export default function CatalogManager() {
 
       <nav className={styles.tabs}>
         {[
+          ["clientes", "Clientes"],
           ["resumen", "Resumen"],
           ["catalogo", "Catálogo"],
           ["simulador", "Probar bot"],
@@ -557,10 +610,117 @@ export default function CatalogManager() {
 
       {message ? <div className={styles.notice}>{message}</div> : null}
 
-      {!businessId ? (
+      {tab === "clientes" ? (
+        <div className={styles.pageStack}>
+          <section className={styles.heroCard}>
+            <div>
+              <span className={styles.eyebrow}>CLIENTES DE METABOT CR</span>
+              <h2>Configurá cada negocio desde aquí</h2>
+              <p>
+                Creá una empresa, elegí su tipo y MetaBot prepara una configuración inicial. Después cargás catálogo, probás respuestas y conectás WhatsApp.
+              </p>
+            </div>
+            <button type="button" className={styles.primaryButton} onClick={() => setShowNewBusiness((value) => !value)}>
+              {showNewBusiness ? "Cerrar formulario" : "+ Nueva empresa"}
+            </button>
+          </section>
+
+          {showNewBusiness ? (
+            <section className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div>
+                  <span className={styles.eyebrow}>NUEVO CLIENTE</span>
+                  <h3>Datos básicos del negocio</h3>
+                </div>
+              </div>
+              <div className={styles.formGrid}>
+                <label>
+                  <span>Nombre de empresa *</span>
+                  <input value={businessDraft.name} onChange={(e) => setBusinessDraft({ ...businessDraft, name: e.target.value })} placeholder="Farmacia San José" />
+                </label>
+                <label>
+                  <span>Tipo de negocio *</span>
+                  <select value={businessDraft.type} onChange={(e) => setBusinessDraft({ ...businessDraft, type: e.target.value })}>
+                    <option>Farmacia</option>
+                    <option>Hotel / Hospedaje</option>
+                    <option>Tour / Turismo</option>
+                    <option>Salón de belleza</option>
+                    <option>Taller mecánico</option>
+                    <option>Restaurante</option>
+                    <option>Tienda</option>
+                    <option>Otro</option>
+                  </select>
+                </label>
+                <label>
+                  <span>País</span>
+                  <input value={businessDraft.country} onChange={(e) => setBusinessDraft({ ...businessDraft, country: e.target.value })} />
+                </label>
+                <label>
+                  <span>Teléfono / WhatsApp</span>
+                  <input value={businessDraft.phoneNumber} onChange={(e) => setBusinessDraft({ ...businessDraft, phoneNumber: e.target.value })} placeholder="+506 ..." />
+                </label>
+                <label className={styles.fullField}>
+                  <span>Dirección</span>
+                  <input value={businessDraft.address} onChange={(e) => setBusinessDraft({ ...businessDraft, address: e.target.value })} placeholder="Liberia, Guanacaste..." />
+                </label>
+                <label className={styles.fullField}>
+                  <span>Descripción</span>
+                  <textarea value={businessDraft.description} onChange={(e) => setBusinessDraft({ ...businessDraft, description: e.target.value })} placeholder="Qué vende, servicios principales, zonas que atiende..." />
+                </label>
+              </div>
+              <div className={styles.actions}>
+                <button type="button" className={styles.primaryButton} onClick={() => void createBusiness()} disabled={busy}>
+                  {busy ? "Creando…" : "Crear empresa y configurar bot"}
+                </button>
+              </div>
+              <p className={styles.help}>
+                Al crearla, MetaBot aplica reglas iniciales según el tipo de negocio. En farmacia, por ejemplo, deriva consultas clínicas a una persona.
+              </p>
+            </section>
+          ) : null}
+
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div>
+                <span className={styles.eyebrow}>EMPRESAS CONFIGURADAS</span>
+                <h3>{businesses.length} cliente{businesses.length === 1 ? "" : "s"}</h3>
+              </div>
+            </div>
+
+            {!businesses.length ? (
+              <div className={styles.emptyState}>
+                <h3>No hay empresas todavía</h3>
+                <p>Creá la primera arriba. Después vas a poder entrar a su panel.</p>
+              </div>
+            ) : (
+              <div className={styles.clientGrid}>
+                {businesses.map((business) => (
+                  <article className={styles.clientCard} key={business.id}>
+                    <div>
+                      <span className={styles.activeBadge}>Activo</span>
+                      <h3>{business.name}</h3>
+                      <p>{business.type || "Negocio"}{business.country ? ` · ${business.country}` : ""}</p>
+                    </div>
+                    <div className={styles.clientMeta}>
+                      {business.phoneNumber ? <span>📱 {business.phoneNumber}</span> : <span>WhatsApp pendiente</span>}
+                      {business.address ? <span>📍 {business.address}</span> : <span>Dirección pendiente</span>}
+                    </div>
+                    <button type="button" className={styles.primaryButton} onClick={async () => { await selectBusiness(business.id); setTab("resumen"); }}>
+                      Entrar al negocio
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {!businessId && tab !== "clientes" ? (
         <section className={styles.emptyState}>
-          <h2>Elegí un negocio para empezar</h2>
-          <p>Desde aquí vas a poder administrar lo que el bot sabe, probar respuestas y actualizar servicios.</p>
+          <h2>Primero elegí o creá una empresa</h2>
+          <p>Entrá a “Clientes”, creá el negocio y luego vas a poder configurar su bot.</p>
+          <button type="button" className={styles.primaryButton} onClick={() => setTab("clientes")}>Ir a Clientes</button>
         </section>
       ) : null}
 
