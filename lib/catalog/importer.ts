@@ -65,9 +65,9 @@ function decimal(value: unknown): Prisma.Decimal | null {
 
 function integerValue(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
-  const match = String(value).trim().match(/-?\d+/);
-  if (!match) throw new Error("capacidad inválida");
-  const parsed = Number(match[0]);
+  const matches = String(value).trim().match(/-?\d+/g) ?? [];
+  if (matches.length !== 1) throw new Error("capacidad inválida; use un único número máximo");
+  const parsed = Number(matches[0]);
   if (!Number.isSafeInteger(parsed) || parsed < 0) throw new Error("capacidad inválida");
   return parsed;
 }
