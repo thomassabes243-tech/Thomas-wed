@@ -34,7 +34,7 @@ const aliases: Record<CatalogField, string[]> = {
   price: ["precio","precio venta","valor","precio unitario"],
   stock: ["stock","existencia","inventario","cantidad"],
   presentation: ["presentacion","formato","empaque"],
-  unit: ["unidad","unidad medida","medida"],
+  unit: ["unidad","unidad medida","medida","precio por","tarifa por","cobro por","unidad tarifa","rate unit","por noche","por persona"],
   requiresPrescription: ["requiere receta","receta","prescripcion","requiere prescripcion"],
   serviceType: ["tipo servicio","tipo de servicio","tipo habitacion","tipo de habitacion","habitacion","room type","tour type","actividad"],
   location: ["ubicacion","lugar","zona","destino","punto de encuentro","meeting point","location"],
