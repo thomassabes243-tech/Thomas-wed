@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { assertBusinessExists, assertCatalogAdmin } from "@/lib/catalog/security";
+import { assertCatalogBusinessAccess } from "@/lib/catalog/security";
 
 export async function GET(request: NextRequest) {
   try {
-    await assertCatalogAdmin();
     const businessId = request.nextUrl.searchParams.get("businessId")?.trim() ?? "";
     if (!businessId) {
       return NextResponse.json({ error: "businessId requerido." }, { status: 400 });
     }
-    await assertBusinessExists(businessId);
+    await assertCatalogBusinessAccess(businessId);
 
     const imports = await db.catalogImport.findMany({
       where: { businessId },
