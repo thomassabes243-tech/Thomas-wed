@@ -18,14 +18,27 @@ function sanitizeCell(value: unknown): unknown {
 }
 
 export function parseCatalogBuffer(buffer: Buffer, fileType: "csv" | "xlsx"): ParsedCatalogFile {
-  const workbook = XLSX.read(buffer, {
-    type: "buffer",
-    cellDates: false,
+  const workbook =
+    fileType === "csv"
+      ? XLSX.read(buffer.toString("utf8"), {
+          type: "string",
+          cellDates: false,
+          cellFormula: false,
+          cellHTML: false,
+          raw: true,
+          dense: false,
+        })
+      : XLSX.read(buffer, {
+          type: "buffer",
+          cellDates: false,
     cellFormula: false,
     cellHTML: false,
     raw: true,
-    dense: false,
-  });
+          cellFormula: false,
+          cellHTML: false,
+          raw: true,
+          dense: false,
+        });
 
   const firstSheet = workbook.SheetNames[0];
   if (!firstSheet) throw new Error("El archivo no contiene hojas o datos.");
