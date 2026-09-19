@@ -16,6 +16,17 @@ type NormalizedProduct = {
   presentation: string | null;
   unit: string | null;
   requiresPrescription: boolean | null;
+  serviceType: string | null;
+  location: string | null;
+  duration: string | null;
+  capacity: number | null;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  includes: string | null;
+  amenities: string | null;
+  availabilityNote: string | null;
+  reservationRequired: boolean | null;
+  cancellationPolicy: string | null;
   searchText: string;
 };
 
@@ -52,6 +63,15 @@ function decimal(value: unknown): Prisma.Decimal | null {
   return new Prisma.Decimal(raw);
 }
 
+function integerValue(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const match = String(value).trim().match(/-?\d+/);
+  if (!match) throw new Error("capacidad inválida");
+  const parsed = Number(match[0]);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) throw new Error("capacidad inválida");
+  return parsed;
+}
+
 function booleanValue(value: unknown): boolean | null {
   const normalized = text(value)?.toLowerCase();
   if (!normalized) return null;
@@ -78,6 +98,17 @@ export function normalizeProductRow(row: CatalogSourceRow, mapping: ColumnMappin
   const description = text(get(row, mapping, "description"));
   const presentation = text(get(row, mapping, "presentation"));
   const unit = text(get(row, mapping, "unit"));
+  const serviceType = text(get(row, mapping, "serviceType"));
+  const location = text(get(row, mapping, "location"));
+  const duration = text(get(row, mapping, "duration"));
+  const capacity = integerValue(get(row, mapping, "capacity"));
+  const checkInTime = text(get(row, mapping, "checkInTime"));
+  const checkOutTime = text(get(row, mapping, "checkOutTime"));
+  const includes = text(get(row, mapping, "includes"));
+  const amenities = text(get(row, mapping, "amenities"));
+  const availabilityNote = text(get(row, mapping, "availabilityNote"));
+  const reservationRequired = booleanValue(get(row, mapping, "reservationRequired"));
+  const cancellationPolicy = text(get(row, mapping, "cancellationPolicy"));
 
   return {
     externalCode,
@@ -90,7 +121,30 @@ export function normalizeProductRow(row: CatalogSourceRow, mapping: ColumnMappin
     presentation,
     unit,
     requiresPrescription: booleanValue(get(row, mapping, "requiresPrescription")),
-    searchText: buildProductSearchText([name, externalCode, sku, category, presentation]),
+    serviceType,
+    location,
+    duration,
+    capacity,
+    checkInTime,
+    checkOutTime,
+    includes,
+    amenities,
+    availabilityNote,
+    reservationRequired,
+    cancellationPolicy,
+    searchText: buildProductSearchText([
+      name,
+      externalCode,
+      sku,
+      category,
+      presentation,
+      serviceType,
+      location,
+      duration,
+      capacity === null ? null : `${capacity} personas`,
+      includes,
+      amenities,
+    ]),
   };
 }
 
@@ -111,6 +165,17 @@ function hasChanged(
     presentation: string | null;
     unit: string | null;
     requiresPrescription: boolean | null;
+    serviceType: string | null;
+    location: string | null;
+    duration: string | null;
+    capacity: number | null;
+    checkInTime: string | null;
+    checkOutTime: string | null;
+    includes: string | null;
+    amenities: string | null;
+    availabilityNote: string | null;
+    reservationRequired: boolean | null;
+    cancellationPolicy: string | null;
     searchText: string;
     active: boolean;
   },
@@ -127,6 +192,17 @@ function hasChanged(
     existing.presentation !== incoming.presentation ||
     existing.unit !== incoming.unit ||
     existing.requiresPrescription !== incoming.requiresPrescription ||
+    existing.serviceType !== incoming.serviceType ||
+    existing.location !== incoming.location ||
+    existing.duration !== incoming.duration ||
+    existing.capacity !== incoming.capacity ||
+    existing.checkInTime !== incoming.checkInTime ||
+    existing.checkOutTime !== incoming.checkOutTime ||
+    existing.includes !== incoming.includes ||
+    existing.amenities !== incoming.amenities ||
+    existing.availabilityNote !== incoming.availabilityNote ||
+    existing.reservationRequired !== incoming.reservationRequired ||
+    existing.cancellationPolicy !== incoming.cancellationPolicy ||
     existing.searchText !== incoming.searchText ||
     existing.active !== true
   );
@@ -144,6 +220,17 @@ function toJsonProduct(product: NormalizedProduct): Prisma.InputJsonObject {
     presentation: product.presentation,
     unit: product.unit,
     requiresPrescription: product.requiresPrescription,
+    serviceType: product.serviceType,
+    location: product.location,
+    duration: product.duration,
+    capacity: product.capacity,
+    checkInTime: product.checkInTime,
+    checkOutTime: product.checkOutTime,
+    includes: product.includes,
+    amenities: product.amenities,
+    availabilityNote: product.availabilityNote,
+    reservationRequired: product.reservationRequired,
+    cancellationPolicy: product.cancellationPolicy,
     searchText: product.searchText,
   };
 }
@@ -235,6 +322,17 @@ export async function importCatalogRows(params: {
           presentation: existing.presentation,
           unit: existing.unit,
           requiresPrescription: existing.requiresPrescription,
+          serviceType: existing.serviceType,
+          location: existing.location,
+          duration: existing.duration,
+          capacity: existing.capacity,
+          checkInTime: existing.checkInTime,
+          checkOutTime: existing.checkOutTime,
+          includes: existing.includes,
+          amenities: existing.amenities,
+          availabilityNote: existing.availabilityNote,
+          reservationRequired: existing.reservationRequired,
+          cancellationPolicy: existing.cancellationPolicy,
           searchText: existing.searchText,
           active: existing.active,
         };
