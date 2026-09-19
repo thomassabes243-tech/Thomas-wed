@@ -99,6 +99,14 @@ assert.deepEqual(
   catalogSearchTokens("¿A qué hora es el check-in?"),
   ["check", "in"],
 );
+assert.deepEqual(
+  catalogSearchTokens("¿Qué comodidades tiene la habitación doble?"),
+  ["comodidades", "habitacion", "doble"],
+);
+assert.deepEqual(
+  catalogSearchTokens("Política de cancelación de la habitación doble"),
+  ["cancelacion", "habitacion", "doble"],
+);
 
 const ambiguousCapacityCsv = Buffer.from(
   "Código,Servicio,Capacidad\nA1,Habitación Familiar,2 adultos + 2 niños\n",
