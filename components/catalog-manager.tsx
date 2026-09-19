@@ -65,6 +65,9 @@ export default function CatalogManager() {
   const [busy, setBusy] = useState(false);
   const [selectingBusiness, setSelectingBusiness] = useState(false);
   const [message, setMessage] = useState("");
+  const [testQuery, setTestQuery] = useState("");
+  const [botAnswer, setBotAnswer] = useState("");
+  const [testingAnswer, setTestingAnswer] = useState(false);
 
   useEffect(() => {
     fetch("/api/catalog/businesses")
@@ -119,6 +122,8 @@ export default function CatalogManager() {
       setResult(null);
       setFile(null);
       setReplaceConfirmed(false);
+      setTestQuery("");
+      setBotAnswer("");
       setMessage(`Empresa activa: ${data.business.name}`);
     } catch (error) {
       setBusinessId("");
@@ -126,6 +131,30 @@ export default function CatalogManager() {
       setMessage(error instanceof Error ? error.message : "No se pudo seleccionar la empresa.");
     } finally {
       setSelectingBusiness(false);
+    }
+  }
+
+  async function testCatalogAnswer() {
+    if (!businessId || !testQuery.trim()) {
+      setMessage("Seleccioná una empresa y escribí una consulta para probar el catálogo.");
+      return;
+    }
+
+    setTestingAnswer(true);
+    setBotAnswer("");
+    try {
+      const response = await fetch("/api/catalog/answer", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ businessId, query: testQuery }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "No se pudo probar la respuesta.");
+      setBotAnswer(data.reply ?? "");
+    } catch (error) {
+      setBotAnswer(error instanceof Error ? error.message : "No se pudo probar la respuesta.");
+    } finally {
+      setTestingAnswer(false);
     }
   }
 
@@ -369,6 +398,34 @@ export default function CatalogManager() {
           </div>
         </section>
       ) : null}
+
+      <section className={styles.card}>
+        <div className={styles.kicker}>PRUEBA DEL CATÁLOGO</div>
+        <h2>Probar respuesta del bot</h2>
+        <p className={styles.muted}>
+          Consultá por nombre, código o categoría. La respuesta usa únicamente información almacenada y no agrega moneda.
+        </p>
+        <div className={styles.stack}>
+          <label className={styles.field}>
+            <span>Consulta</span>
+            <input
+              value={testQuery}
+              onChange={(event) => setTestQuery(event.target.value)}
+              placeholder="Ejemplo: acetaminofen 500"
+              disabled={!businessId || testingAnswer}
+            />
+          </label>
+          <button
+            className={styles.primaryButton}
+            type="button"
+            onClick={testCatalogAnswer}
+            disabled={!businessId || testingAnswer || !testQuery.trim()}
+          >
+            {testingAnswer ? "Consultando…" : "Probar respuesta"}
+          </button>
+        </div>
+        {botAnswer ? <pre className={styles.botAnswer}>{botAnswer}</pre> : null}
+      </section>
 
       <section className={styles.card}>
         <h2>Historial</h2>
