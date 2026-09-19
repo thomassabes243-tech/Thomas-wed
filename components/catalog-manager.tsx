@@ -63,6 +63,7 @@ export default function CatalogManager() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [history, setHistory] = useState<ImportHistory[]>([]);
   const [busy, setBusy] = useState(false);
+  const [selectingBusiness, setSelectingBusiness] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -71,7 +72,7 @@ export default function CatalogManager() {
       .then((data) => {
         const list = data.businesses ?? [];
         setBusinesses(list);
-        if (list.length === 1) setBusinessId(list[0].id);
+        if (list.length === 1) void selectBusiness(list[0].id);
       })
       .catch(() => setMessage("No se pudieron cargar las empresas."));
   }, []);
@@ -91,6 +92,42 @@ export default function CatalogManager() {
     () => businesses.find((business) => business.id === businessId),
     [businesses, businessId],
   );
+
+  async function selectBusiness(nextBusinessId: string) {
+    if (!nextBusinessId) {
+      setBusinessId("");
+      setPreview(null);
+      setResult(null);
+      setFile(null);
+      setHistory([]);
+      return;
+    }
+
+    setSelectingBusiness(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/catalog/business/select", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ businessId: nextBusinessId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "No se pudo seleccionar la empresa.");
+
+      setBusinessId(nextBusinessId);
+      setPreview(null);
+      setResult(null);
+      setFile(null);
+      setReplaceConfirmed(false);
+      setMessage(`Empresa activa: ${data.business.name}`);
+    } catch (error) {
+      setBusinessId("");
+      setHistory([]);
+      setMessage(error instanceof Error ? error.message : "No se pudo seleccionar la empresa.");
+    } finally {
+      setSelectingBusiness(false);
+    }
+  }
 
   async function analyze() {
     if (!businessId || !file) {
@@ -163,11 +200,11 @@ export default function CatalogManager() {
         <div className={styles.stack}>
           <label className={styles.field}>
             <span>Empresa</span>
-            <select value={businessId} onChange={(event) => {
-              setBusinessId(event.target.value);
-              setPreview(null);
-              setResult(null);
-            }}>
+            <select
+              value={businessId}
+              disabled={selectingBusiness || busy}
+              onChange={(event) => void selectBusiness(event.target.value)}
+            >
               <option value="">Seleccionar empresa</option>
               {businesses.map((business) => (
                 <option key={business.id} value={business.id}>
@@ -191,7 +228,7 @@ export default function CatalogManager() {
           </label>
 
           <button className={styles.primaryButton} type="button" onClick={analyze} disabled={busy}>
-            {busy ? "Procesando…" : "Analizar archivo"}
+            {busy ? "Procesando…" : selectingBusiness ? "Seleccionando empresa…" : "Analizar archivo"}
           </button>
         </div>
         {selectedBusiness ? (
