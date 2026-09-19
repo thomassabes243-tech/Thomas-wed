@@ -52,6 +52,39 @@ const duplicateHeaderCsv = Buffer.from("Código,Código,Producto\n1,1,Prueba\n",
 const duplicateParsed = parseCatalogBuffer(duplicateHeaderCsv, "csv");
 assert.equal(duplicateParsed.warnings.length > 0, true);
 
+const tourismCsv = Buffer.from(
+  [
+    "Código,Servicio,Tipo de habitación,Ubicación,Capacidad,Check-in,Check-out,Incluye,Amenidades,Disponibilidad,Requiere reserva,Política de cancelación,Precio",
+    "HAB-DBL,Habitación Doble,Habitación,Guanacaste,2,14:00,11:00,Desayuno,WiFi y aire acondicionado,Sujeto a confirmación,Sí,24 horas,75",
+    "TOUR-01,Tour Volcán,Tour,Rincón de la Vieja,8,,,Transporte y guía,,Cupos sujetos a fecha,Sí,48 horas,55",
+  ].join("\n"),
+  "utf8",
+);
+const tourismParsed = parseCatalogBuffer(tourismCsv, "csv");
+assert.equal(tourismParsed.suggestedMapping.externalCode, "Código");
+assert.equal(tourismParsed.suggestedMapping.name, "Servicio");
+assert.equal(tourismParsed.suggestedMapping.serviceType, "Tipo de habitación");
+assert.equal(tourismParsed.suggestedMapping.location, "Ubicación");
+assert.equal(tourismParsed.suggestedMapping.capacity, "Capacidad");
+assert.equal(tourismParsed.suggestedMapping.checkInTime, "Check-in");
+assert.equal(tourismParsed.suggestedMapping.checkOutTime, "Check-out");
+assert.equal(tourismParsed.suggestedMapping.includes, "Incluye");
+assert.equal(tourismParsed.suggestedMapping.amenities, "Amenidades");
+assert.equal(tourismParsed.suggestedMapping.availabilityNote, "Disponibilidad");
+assert.equal(tourismParsed.suggestedMapping.reservationRequired, "Requiere reserva");
+assert.equal(tourismParsed.suggestedMapping.cancellationPolicy, "Política de cancelación");
+
+const room = normalizeProductRow(tourismParsed.rows[0], tourismParsed.suggestedMapping);
+assert.equal(room.name, "Habitación Doble");
+assert.equal(room.serviceType, "Habitación");
+assert.equal(room.location, "Guanacaste");
+assert.equal(room.capacity, 2);
+assert.equal(room.checkInTime, "14:00");
+assert.equal(room.checkOutTime, "11:00");
+assert.equal(room.reservationRequired, true);
+assert.equal(room.searchText.includes("habitacion doble"), true);
+assert.equal(room.searchText.includes("2 personas"), true);
+
 assert.throws(() => parseCatalogBuffer(Buffer.from(""), "csv"), /vacío|hojas|datos/i);
 
-console.log("Catalog importer smoke test passed: XLSX 1500 rows + CSV + malformed values.");
+console.log("Catalog importer smoke test passed: XLSX 1500 rows + CSV + tourism/lodging + malformed values.");
