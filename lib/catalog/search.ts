@@ -12,7 +12,7 @@ function queryTokens(value: string) {
   if (!normalized) return [];
   return normalized
     .split(" ")
-    .filter((token) => token.length >= 2 && !STOP_WORDS.has(token))
+    .filter((token) => (token.length >= 2 || /^\\d+$/.test(token)) && !STOP_WORDS.has(token))
     .slice(0, 8);
 }
 
