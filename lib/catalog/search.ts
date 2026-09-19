@@ -24,7 +24,7 @@ function normalizeToken(token: string) {
   return TOKEN_EQUIVALENTS[token] ?? token;
 }
 
-function queryTokens(value: string) {
+export function catalogSearchTokens(value: string) {
   const normalized = normalizeCatalogSearch(value);
   if (!normalized) return [];
 
@@ -40,7 +40,7 @@ export async function searchProducts(params: {
   query: string;
   limit?: number;
 }) {
-  const tokens = queryTokens(params.query);
+  const tokens = catalogSearchTokens(params.query);
   if (!tokens.length) return [];
 
   const limit = Math.max(1, Math.min(params.limit ?? 8, 20));
