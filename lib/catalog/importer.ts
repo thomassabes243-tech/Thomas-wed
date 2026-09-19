@@ -1,6 +1,7 @@
 import { CatalogChangeAction, CatalogImportMode, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { ColumnMapping } from "./mapping";
+import { buildProductSearchText } from "./normalize";
 
 export type CatalogSourceRow = Record<string, unknown>;
 
@@ -15,6 +16,7 @@ type NormalizedProduct = {
   presentation: string | null;
   unit: string | null;
   requiresPrescription: boolean | null;
+  searchText: string;
 };
 
 export type ImportSummary = {
@@ -70,17 +72,25 @@ export function normalizeProductRow(row: CatalogSourceRow, mapping: ColumnMappin
   const priceRaw = get(row, mapping, "price");
   const stockRaw = get(row, mapping, "stock");
 
+  const externalCode = text(get(row, mapping, "externalCode"));
+  const sku = text(get(row, mapping, "sku"));
+  const category = text(get(row, mapping, "category"));
+  const description = text(get(row, mapping, "description"));
+  const presentation = text(get(row, mapping, "presentation"));
+  const unit = text(get(row, mapping, "unit"));
+
   return {
-    externalCode: text(get(row, mapping, "externalCode")),
-    sku: text(get(row, mapping, "sku")),
+    externalCode,
+    sku,
     name,
-    category: text(get(row, mapping, "category")),
-    description: text(get(row, mapping, "description")),
+    category,
+    description,
     price: priceRaw === null || priceRaw === "" ? null : decimal(priceRaw),
     stock: stockRaw === null || stockRaw === "" ? null : decimal(stockRaw),
-    presentation: text(get(row, mapping, "presentation")),
-    unit: text(get(row, mapping, "unit")),
+    presentation,
+    unit,
     requiresPrescription: booleanValue(get(row, mapping, "requiresPrescription")),
+    searchText: buildProductSearchText([name, externalCode, sku, category, presentation]),
   };
 }
 
@@ -101,6 +111,7 @@ function hasChanged(
     presentation: string | null;
     unit: string | null;
     requiresPrescription: boolean | null;
+    searchText: string;
     active: boolean;
   },
   incoming: NormalizedProduct,
@@ -116,6 +127,7 @@ function hasChanged(
     existing.presentation !== incoming.presentation ||
     existing.unit !== incoming.unit ||
     existing.requiresPrescription !== incoming.requiresPrescription ||
+    existing.searchText !== incoming.searchText ||
     existing.active !== true
   );
 }
@@ -132,6 +144,7 @@ function toJsonProduct(product: NormalizedProduct): Prisma.InputJsonObject {
     presentation: product.presentation,
     unit: product.unit,
     requiresPrescription: product.requiresPrescription,
+    searchText: product.searchText,
   };
 }
 
@@ -222,6 +235,7 @@ export async function importCatalogRows(params: {
           presentation: existing.presentation,
           unit: existing.unit,
           requiresPrescription: existing.requiresPrescription,
+          searchText: existing.searchText,
           active: existing.active,
         };
 
