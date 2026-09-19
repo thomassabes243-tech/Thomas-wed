@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assertCatalogBusinessAccess } from "@/lib/catalog/security";
 import { processInboundMessage } from "@/lib/bot/process-inbound";
+import { db } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,9 +20,32 @@ export async function POST(request: NextRequest) {
 
     await assertCatalogBusinessAccess(businessId);
 
+    const previewNumber = body.customerNumber?.trim() || "preview-customer";
+    if (previewNumber === "preview-customer") {
+      const customer = await db.customer.findUnique({
+        where: {
+          businessId_whatsappNumber: {
+            businessId,
+            whatsappNumber: previewNumber,
+          },
+        },
+        select: { id: true },
+      });
+      if (customer) {
+        await db.conversation.updateMany({
+          where: {
+            businessId,
+            customerId: customer.id,
+            status: { in: ["open", "waiting", "human_required"] },
+          },
+          data: { status: "open", assignedToHuman: false },
+        });
+      }
+    }
+
     const result = await processInboundMessage({
       businessId,
-      from: body.customerNumber?.trim() || "preview-customer",
+      from: previewNumber,
       customerName: body.customerName?.trim() || "Cliente de prueba",
       text: message,
       sendToWhatsApp: false,
