@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
+import { normalizeCatalogSearch } from "./normalize";
 
 function normalizeQuery(value: string) {
-  return value.trim().replace(/\s+/g, " ");
+  return normalizeCatalogSearch(value);
 }
 
 export async function searchProducts(params: {
@@ -17,13 +18,7 @@ export async function searchProducts(params: {
     where: {
       businessId: params.businessId,
       active: true,
-      OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { externalCode: { equals: query, mode: "insensitive" } },
-        { sku: { equals: query, mode: "insensitive" } },
-        { category: { contains: query, mode: "insensitive" } },
-        { presentation: { contains: query, mode: "insensitive" } },
-      ],
+      searchText: { contains: query },
     },
     select: {
       id: true,
