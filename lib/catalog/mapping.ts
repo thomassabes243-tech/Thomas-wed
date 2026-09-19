@@ -9,6 +9,17 @@ export const CATALOG_FIELDS = [
   "presentation",
   "unit",
   "requiresPrescription",
+  "serviceType",
+  "location",
+  "duration",
+  "capacity",
+  "checkInTime",
+  "checkOutTime",
+  "includes",
+  "amenities",
+  "availabilityNote",
+  "reservationRequired",
+  "cancellationPolicy",
 ] as const;
 
 export type CatalogField = (typeof CATALOG_FIELDS)[number];
@@ -25,6 +36,17 @@ const aliases: Record<CatalogField, string[]> = {
   presentation: ["presentacion","formato","empaque"],
   unit: ["unidad","unidad medida","medida"],
   requiresPrescription: ["requiere receta","receta","prescripcion","requiere prescripcion"],
+  serviceType: ["tipo servicio","tipo de servicio","tipo habitacion","tipo de habitacion","habitacion","room type","tour type","actividad"],
+  location: ["ubicacion","lugar","zona","destino","punto de encuentro","meeting point","location"],
+  duration: ["duracion","duración","tiempo","duracion tour","duracion actividad","nights","noches"],
+  capacity: ["capacidad","personas","huespedes","huéspedes","pasajeros","cupos","max personas","ocupacion maxima","ocupación máxima"],
+  checkInTime: ["check in","check-in","hora entrada","hora de entrada","entrada"],
+  checkOutTime: ["check out","check-out","hora salida","hora de salida","salida"],
+  includes: ["incluye","incluido","incluidos","includes","servicios incluidos"],
+  amenities: ["amenidades","comodidades","servicios habitacion","servicios habitación","facilidades","amenities"],
+  availabilityNote: ["disponibilidad","nota disponibilidad","estado disponibilidad","availability","availability note"],
+  reservationRequired: ["requiere reserva","reserva requerida","reservacion requerida","reservación requerida","booking required"],
+  cancellationPolicy: ["politica cancelacion","política cancelación","politica de cancelacion","política de cancelación","cancellation policy"],
 };
 
 export function normalizeHeader(value: string) {
