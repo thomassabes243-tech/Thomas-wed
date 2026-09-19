@@ -13,10 +13,10 @@ export default async function CatalogLoginPage({
   return (
     <main className={styles.shell}>
       <section className={styles.card}>
-        <div className={styles.kicker}>METABOT CR · CATÁLOGOS</div>
+        <div className={styles.kicker}>METABOT CR · ADMINISTRACIÓN</div>
         <h1>Acceso administrativo</h1>
         <p className={styles.muted}>
-          Ingresá la clave administrativa configurada en el servidor. No se guarda en el navegador.
+          Entrá al panel donde administrás tus clientes y configurás el bot de cada negocio.
         </p>
         {params.error ? <p className={styles.error}>Clave incorrecta.</p> : null}
         <form action="/api/catalog/login" method="post" className={styles.stack}>
@@ -25,7 +25,7 @@ export default async function CatalogLoginPage({
             <input name="password" type="password" required autoComplete="current-password" />
           </label>
           <button className={styles.primaryButton} type="submit">
-            Entrar al catálogo
+            Entrar a MetaBot CR
           </button>
         </form>
       </section>
