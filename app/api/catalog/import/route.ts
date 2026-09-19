@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { importCatalogRows } from "@/lib/catalog/importer";
 import type { ColumnMapping } from "@/lib/catalog/mapping";
 import { detectCatalogFileType, parseCatalogBuffer } from "@/lib/catalog/parser";
-import { assertBusinessExists, assertCatalogAdmin } from "@/lib/catalog/security";
+import { assertCatalogBusinessAccess } from "@/lib/catalog/security";
 
 export const runtime = "nodejs";
 
@@ -17,7 +17,6 @@ function maxBytes() {
 
 export async function POST(request: NextRequest) {
   try {
-    await assertCatalogAdmin();
     const form = await request.formData();
     const businessId = String(form.get("businessId") ?? "").trim();
     const importId = String(form.get("importId") ?? "").trim();
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El archivo supera el límite configurado." }, { status: 413 });
     }
 
-    await assertBusinessExists(businessId);
+    await assertCatalogBusinessAccess(businessId);
     const existingImport = await db.catalogImport.findFirst({
       where: { id: importId, businessId },
     });
