@@ -14,7 +14,7 @@ function maxBytes() {
 
 export async function POST(request: NextRequest) {
   try {
-    assertCatalogAdmin(request);
+    await assertCatalogAdmin();
     const form = await request.formData();
     const businessId = String(form.get("businessId") ?? "").trim();
     const file = form.get("file");
