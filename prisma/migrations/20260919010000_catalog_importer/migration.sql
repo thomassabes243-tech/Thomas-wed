@@ -95,6 +95,28 @@ CREATE TABLE IF NOT EXISTS "CatalogImportReject" (
   CONSTRAINT "CatalogImportReject_pkey" PRIMARY KEY ("id")
 );
 
+-- Re-run safety: if a previous catalog test created Product before later optional
+-- fields were added, complete the table without deleting or recreating data.
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "serviceType" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "location" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "duration" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "capacity" INTEGER;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "checkInTime" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "checkOutTime" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "includes" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "amenities" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "availabilityNote" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "reservationRequired" BOOLEAN;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "cancellationPolicy" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "searchText" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "active" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "sourceImportId" TEXT;
+
+ALTER TABLE "CatalogImport" ADD COLUMN IF NOT EXISTS "fileHash" TEXT;
+ALTER TABLE "CatalogImport" ADD COLUMN IF NOT EXISTS "mapping" JSONB;
+ALTER TABLE "CatalogImport" ADD COLUMN IF NOT EXISTS "preview" JSONB;
+ALTER TABLE "CatalogImport" ADD COLUMN IF NOT EXISTS "errorSummary" TEXT;
+
 CREATE UNIQUE INDEX IF NOT EXISTS "Product_businessId_sku_key" ON "Product"("businessId","sku");
 CREATE UNIQUE INDEX IF NOT EXISTS "Product_businessId_externalCode_key" ON "Product"("businessId","externalCode");
 CREATE INDEX IF NOT EXISTS "Product_businessId_active_idx" ON "Product"("businessId","active");
