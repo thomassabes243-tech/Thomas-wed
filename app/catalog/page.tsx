@@ -10,9 +10,9 @@ export default async function CatalogPage() {
     <main className={styles.shell}>
       <header className={styles.header}>
         <div>
-          <div className={styles.kicker}>METABOT CR · ADMINISTRACIÓN</div>
-          <h1>Catálogo</h1>
-          <p className={styles.muted}>Importación multiempresa para Costa Rica y Nicaragua.</p>
+          <div className={styles.kicker}>METABOT CR · CLIENTES Y BOTS</div>
+          <h1>Centro de clientes</h1>
+          <p className={styles.muted}>Creá negocios, configurá su bot, cargá información y probalo antes de conectarlo a WhatsApp.</p>
         </div>
         <form action="/api/catalog/logout" method="post">
           <button className={styles.secondaryButton} type="submit">Salir</button>
