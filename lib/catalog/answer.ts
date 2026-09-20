@@ -33,8 +33,9 @@ function asksForDateAvailability(value: string) {
   return /\b(disponib|reserv|habitaci[oó]n.*(?:hoy|mañana|manana|fecha)|hoy|mañana|manana|esta noche|fin de semana|check.?in|entrada.*fecha)\b/i.test(value);
 }
 
-function formatPrice(value: { toString(): string } | null) {
-  return value ? value.toString() : null;
+function formatPrice(value: { toString(): string } | null, currency?: string | null) {
+  if (!value) return null;
+  return currency ? `${value.toString()} ${currency}` : value.toString();
 }
 
 function formatStock(value: { toString(): string } | null, unit: string | null) {
@@ -49,7 +50,7 @@ export async function answerCatalogQuestion(params: {
 }): Promise<CatalogAnswer> {
   const business = await db.business.findUnique({
     where: { id: params.businessId },
-    select: { id: true, name: true, type: true, address: true },
+    select: { id: true, name: true, type: true, address: true, phoneNumber: true, description: true },
   });
 
   if (!business) {
@@ -57,6 +58,36 @@ export async function answerCatalogQuestion(params: {
       reply: "No tengo información confirmada de este negocio en este momento.",
       found: false,
       requiresHuman: true,
+      productIds: [],
+    };
+  }
+
+  const hours = extractBusinessDetail(business.description, "Horario");
+  const currency = extractBusinessDetail(business.description, "Moneda del catálogo");
+
+  if (isHoursQuestion(params.query) && hours) {
+    return {
+      reply: `El horario registrado de ${business.name} es: ${hours}.`,
+      found: true,
+      requiresHuman: false,
+      productIds: [],
+    };
+  }
+
+  if (isContactQuestion(params.query) && business.phoneNumber) {
+    return {
+      reply: `El teléfono/WhatsApp registrado de ${business.name} es: ${business.phoneNumber}.`,
+      found: true,
+      requiresHuman: false,
+      productIds: [],
+    };
+  }
+
+  if (isLocationQuestion(params.query) && business.address) {
+    return {
+      reply: `La ubicación registrada de ${business.name} es: ${business.address}.`,
+      found: true,
+      requiresHuman: false,
       productIds: [],
     };
   }
@@ -74,15 +105,6 @@ export async function answerCatalogQuestion(params: {
 
   const hospitality = isHospitalityBusiness(business.type) || isHospitalityQuery(params.query);
   const dateAvailability = hospitality && asksForDateAvailability(params.query);
-
-  if (hospitality && isLocationQuestion(params.query) && business.address) {
-    return {
-      reply: `La ubicación registrada de ${business.name} es: ${business.address}.`,
-      found: true,
-      requiresHuman: false,
-      productIds: [],
-    };
-  }
 
   const products = await searchProducts({
     businessId: params.businessId,
@@ -142,6 +164,7 @@ export async function answerCatalogQuestion(params: {
 
     if (product.serviceType) details.push(product.serviceType);
     if (product.presentation) details.push(product.presentation);
+    if (product.description) details.push(`descripción registrada: ${product.description}`);
     if (product.location) details.push(`ubicación: ${product.location}`);
     if (product.duration) details.push(`duración: ${product.duration}`);
     if (product.capacity !== null) details.push(`capacidad registrada: ${product.capacity} personas`);
@@ -153,7 +176,7 @@ export async function answerCatalogQuestion(params: {
     if (product.reservationRequired === true) details.push("requiere reserva");
     if (product.cancellationPolicy) details.push(`cancelación: ${product.cancellationPolicy}`);
 
-    const price = formatPrice(product.price);
+    const price = formatPrice(product.price, currency);
     if (price) {
       const basis = product.unit ? ` por ${product.unit.replace(/^por\s+/i, "")}` : "";
       details.push(`precio registrado: ${price}${basis}`);
