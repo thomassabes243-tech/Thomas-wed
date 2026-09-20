@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { answerCatalogQuestion } from "@/lib/catalog/answer";
 import { sendWhatsAppText } from "@/lib/meta/client";
+import { decryptCredential } from "@/lib/meta/credentials";
 
 export type ProcessInboundInput = {
   businessId: string;
@@ -112,14 +113,30 @@ export async function processInboundMessage(input: ProcessInboundInput) {
     },
   });
 
-  if (
-    input.sendToWhatsApp &&
-    business.whatsappPhoneNumberId &&
-    business.phoneNumber
-  ) {
-    await sendWhatsAppText(business.whatsappPhoneNumberId, input.from, reply);
-  } else if (input.sendToWhatsApp && business.whatsappPhoneNumberId) {
-    await sendWhatsAppText(business.whatsappPhoneNumberId, input.from, reply);
+  if (input.sendToWhatsApp && business.whatsappPhoneNumberId) {
+    if (!business.whatsappAccessTokenEncrypted) {
+      throw new Error("El negocio no tiene un access token de WhatsApp conectado.");
+    }
+
+    try {
+      const accessToken = decryptCredential(business.whatsappAccessTokenEncrypted);
+      await sendWhatsAppText(business.whatsappPhoneNumberId, input.from, reply, accessToken);
+      if (business.whatsappConnectionStatus !== "connected" || business.whatsappLastError) {
+        await db.business.update({
+          where: { id: business.id },
+          data: { whatsappConnectionStatus: "connected", whatsappLastError: null },
+        });
+      }
+    } catch (error) {
+      await db.business.update({
+        where: { id: business.id },
+        data: {
+          whatsappConnectionStatus: "error",
+          whatsappLastError: error instanceof Error ? error.message.slice(0, 500) : "Error enviando a Meta.",
+        },
+      });
+      throw error;
+    }
   }
 
   return {
