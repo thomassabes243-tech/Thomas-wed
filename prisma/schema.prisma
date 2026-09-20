@@ -53,6 +53,10 @@ model Business {
   phoneNumber               String?
   whatsappPhoneNumberId     String?         @unique
   whatsappBusinessAccountId String?
+  whatsappAccessTokenEncrypted String?
+  whatsappConnectionStatus String @default("disconnected")
+  whatsappLastError String?
+  whatsappConnectedAt DateTime?
   type                      String?
   description               String?
   address                   String?
