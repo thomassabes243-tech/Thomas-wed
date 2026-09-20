@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { isValidMetaSignature } from "@/lib/meta/signature";
 import { processInboundMessage } from "@/lib/bot/process-inbound";
+import { assertWhatsAppPreviewOnly, getWhatsAppVerifyToken } from "@/lib/meta/config";
 
 type MetaMessage = {
   id?: string;
@@ -25,17 +26,32 @@ type MetaPayload = {
 };
 
 export async function GET(request: NextRequest) {
-  const q = request.nextUrl.searchParams;
-  if (
-    q.get("hub.mode") === "subscribe" &&
-    q.get("hub.verify_token") === process.env.WHATSAPP_VERIFY_TOKEN
-  ) {
-    return new NextResponse(q.get("hub.challenge") ?? "", { status: 200 });
+  try {
+    assertWhatsAppPreviewOnly();
+    const q = request.nextUrl.searchParams;
+    const verifyToken = getWhatsAppVerifyToken();
+    if (
+      verifyToken &&
+      q.get("hub.mode") === "subscribe" &&
+      q.get("hub.verify_token") === verifyToken
+    ) {
+      return new NextResponse(q.get("hub.challenge") ?? "", { status: 200 });
+    }
+    return NextResponse.json({ error: "Verificación rechazada" }, { status: 403 });
+  } catch (error) {
+    const status = (error as Error & { status?: number }).status ?? 500;
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Webhook no disponible." }, { status });
   }
-  return NextResponse.json({ error: "Verificación rechazada" }, { status: 403 });
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    assertWhatsAppPreviewOnly();
+  } catch (error) {
+    const status = (error as Error & { status?: number }).status ?? 500;
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Webhook no disponible." }, { status });
+  }
+
   const raw = await request.text();
   if (!isValidMetaSignature(raw, request.headers.get("x-hub-signature-256"))) {
     return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
