@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "@/app/catalog/catalog.module.css";
+import WhatsAppConnectionPanel from "@/components/whatsapp-connection-panel";
 
 type Business = { id: string; name: string; country: string | null; type?: string | null; phoneNumber?: string | null; address?: string | null };
-type Tab = "clientes" | "resumen" | "catalogo" | "simulador" | "conversaciones" | "importar" | "configuracion";
+type Tab = "clientes" | "resumen" | "catalogo" | "simulador" | "conversaciones" | "importar" | "whatsapp" | "configuracion";
 
 type Dashboard = {
   business: Business & {
@@ -171,7 +172,7 @@ function productToDraft(product: Product): ProductDraft {
   };
 }
 
-export default function CatalogManager() {
+export default function CatalogManager({ previewOnly = false }: { previewOnly?: boolean }) {
   const [tab, setTab] = useState<Tab>("clientes");
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [businessId, setBusinessId] = useState("");
@@ -595,6 +596,7 @@ export default function CatalogManager() {
           ["simulador", "Probar bot"],
           ["conversaciones", "Chats"],
           ["importar", "Importar"],
+          ...(previewOnly ? [["whatsapp", "Conectar WhatsApp"]] : []),
           ["configuracion", "Configurar"],
         ].map(([value, label]) => (
           <button
@@ -1074,6 +1076,10 @@ export default function CatalogManager() {
             </section>
           ) : null}
         </div>
+      ) : null}
+
+      {businessId && tab === "whatsapp" && previewOnly ? (
+        <WhatsAppConnectionPanel businessId={businessId} />
       ) : null}
 
       {businessId && tab === "configuracion" && settings ? (
