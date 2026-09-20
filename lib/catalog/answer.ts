@@ -9,7 +9,24 @@ export type CatalogAnswer = {
 };
 
 function isClinicalQuestion(value: string) {
-  return /\b(dosis|cuanto debo tomar|cuánto debo tomar|puedo tomar|embaraz|niñ[oa]|sustitu|reemplaz|tratamiento|diagn[oó]stic|mezclar|interacci[oó]n|contraindic|efecto secundario)\b/i.test(value);
+  return /\b(dosis|cuanto debo tomar|cuánto debo tomar|debo tomar|puedo tomar|recomiend|que medicamento|qué medicamento|que antibiotico|qué antibiótico|embaraz|niñ[oa]|sustitu|reemplaz|tratamiento|diagn[oó]stic|mezclar|interacci[oó]n|contraindic|efecto secundario)\b/i.test(value);
+}
+
+function isHoursQuestion(value: string) {
+  return /\b(horario|hora|abren|abre|cierran|cierra|abierto|atienden|atencion|atención)\b/i.test(value);
+}
+
+function isContactQuestion(value: string) {
+  return /\b(telefono|teléfono|whatsapp|contacto|numero|número)\b/i.test(value);
+}
+
+function extractBusinessDetail(description: string | null, label: string) {
+  if (!description) return null;
+  const prefix = `${label}:`;
+  const line = description
+    .split(/\r?\n/)
+    .find((item) => item.trim().toLowerCase().startsWith(prefix.toLowerCase()));
+  return line ? line.trim().slice(prefix.length).trim() : null;
 }
 
 function isHospitalityBusiness(value: string | null) {
