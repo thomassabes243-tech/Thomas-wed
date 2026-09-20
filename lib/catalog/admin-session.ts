@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 const ADMIN_COOKIE = "metabot_catalog_admin";
 const BUSINESS_COOKIE = "metabot_catalog_business";
 const PREVIEW_ADMIN_PASSWORD_HASH =
-  "7d397137f7b00cf31d399da469b35663f1edc978ddb9fa51f39975960516bc77";
+  "3901e1c18ea017bfc4584d8b183831d90051481dd25ffeab8d8392a0daa8b6a5";
 
 function sessionSecret() {
   const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
