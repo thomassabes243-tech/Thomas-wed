@@ -18,7 +18,7 @@ export default async function CatalogPage() {
           <button className={styles.secondaryButton} type="submit">Salir</button>
         </form>
       </header>
-      <CatalogManager previewOnly={process.env.VERCEL_ENV === "preview"} />
+      <CatalogManager previewOnly={process.env.VERCEL_ENV === "preview" || (!process.env.VERCEL_ENV && process.env.NODE_ENV === "development")} />
     </main>
   );
 }
