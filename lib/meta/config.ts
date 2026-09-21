@@ -1,8 +1,12 @@
 import crypto from "node:crypto";
 
 export function assertWhatsAppPreviewOnly() {
-  if (process.env.VERCEL_ENV !== "preview") {
-    const error = new Error("La conexión de WhatsApp está habilitada únicamente en Preview.");
+  const allowed =
+    process.env.VERCEL_ENV === "preview" ||
+    (!process.env.VERCEL_ENV && process.env.NODE_ENV === "development");
+
+  if (!allowed) {
+    const error = new Error("La conexión de WhatsApp está habilitada únicamente en Preview o desarrollo.");
     (error as Error & { status?: number }).status = 404;
     throw error;
   }
