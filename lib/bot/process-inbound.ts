@@ -96,24 +96,10 @@ export async function processInboundMessage(input: ProcessInboundInput) {
     requiresHuman = answer.requiresHuman;
   }
 
-  await db.message.create({
-    data: {
-      conversationId: conversation.id,
-      direction: "outbound",
-      content: reply,
-    },
-  });
-
-  conversation = await db.conversation.update({
-    where: { id: conversation.id },
-    data: {
-      lastMessageAt: new Date(),
-      status: requiresHuman ? "human_required" : "open",
-      assignedToHuman: requiresHuman,
-    },
-  });
-
-  if (input.sendToWhatsApp && business.whatsappPhoneNumberId) {
+  if (input.sendToWhatsApp) {
+    if (!business.whatsappPhoneNumberId) {
+      throw new Error("El negocio no tiene Phone Number ID de WhatsApp conectado.");
+    }
     if (!business.whatsappAccessTokenEncrypted) {
       throw new Error("El negocio no tiene un access token de WhatsApp conectado.");
     }
@@ -138,6 +124,23 @@ export async function processInboundMessage(input: ProcessInboundInput) {
       throw error;
     }
   }
+
+  await db.message.create({
+    data: {
+      conversationId: conversation.id,
+      direction: "outbound",
+      content: reply,
+    },
+  });
+
+  conversation = await db.conversation.update({
+    where: { id: conversation.id },
+    data: {
+      lastMessageAt: new Date(),
+      status: requiresHuman ? "human_required" : "open",
+      assignedToHuman: requiresHuman,
+    },
+  });
 
   return {
     duplicate: false,
