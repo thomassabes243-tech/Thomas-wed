@@ -88,13 +88,16 @@ export async function clearCatalogAdminSession() {
 }
 
 export function verifyCatalogAdminPassword(value: string) {
-  const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
-  if (explicit) return safeEqual(value, explicit);
-
   if (process.env.VERCEL_ENV === "preview") {
     const suppliedHash = createHash("sha256").update(value).digest("hex");
-    return safeEqual(suppliedHash, PREVIEW_ADMIN_PASSWORD_HASH);
+    if (safeEqual(suppliedHash, PREVIEW_ADMIN_PASSWORD_HASH)) return true;
+
+    const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
+    return Boolean(explicit && safeEqual(value, explicit));
   }
+
+  const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
+  if (explicit) return safeEqual(value, explicit);
 
   return false;
 }
