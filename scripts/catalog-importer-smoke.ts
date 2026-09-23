@@ -37,6 +37,18 @@ assert.throws(
 );
 
 assert.equal(normalizeCatalogSearch("ACETAMINOFÉN   500"), "acetaminofen 500");
+assert.deepEqual(
+  catalogSearchTokens("Hola buenas noches, ¿tiene Amoxicilina?"),
+  ["amoxicilina"],
+);
+assert.deepEqual(
+  catalogSearchTokens("Hola buenos días, ¿tienen acetaminofén?"),
+  ["acetaminofen"],
+);
+assert.deepEqual(
+  catalogSearchTokens("Disculpe, ¿venden ibuprofeno 400 mg?"),
+  ["ibuprofeno", "400", "mg"],
+);
 
 const csv = Buffer.from(
   "Cod,Producto,Precio,Stock\nA1,Tornillo,125,10\nA2,Tuerca,90,\n",
