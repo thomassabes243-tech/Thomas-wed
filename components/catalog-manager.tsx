@@ -146,6 +146,56 @@ const importFields = [
   ["cancellationPolicy", "Cancelación"],
 ] as const;
 
+function botExamplesForBusiness(type?: string | null) {
+  const normalized = (type ?? "").toLowerCase();
+
+  if (/farmacia|pharmacy/.test(normalized)) {
+    return {
+      intro: "Escribí una pregunta como la haría un cliente. Ejemplo: “Hola, buenas noches, ¿tienen amoxicilina?”",
+      suggestions: [
+        "Hola, ¿tienen amoxicilina?",
+        "¿Hay acetaminofén?",
+        "¿Cuánto cuesta el ibuprofeno 400 mg?",
+        "¿Cuál es el horario?",
+      ],
+    };
+  }
+
+  if (/hotel|hostal|hospedaje|cabina|lodge/.test(normalized)) {
+    return {
+      intro: "Escribí una pregunta como la haría un cliente. Ejemplo: “¿Cuánto cuesta una habitación doble para dos personas?”",
+      suggestions: [
+        "¿Qué habitaciones tienen?",
+        "¿Cuánto cuesta una habitación doble?",
+        "¿A qué hora es el check-in?",
+        "¿Dónde están ubicados?",
+      ],
+    };
+  }
+
+  if (/tour|turismo|excursion|operador/.test(normalized)) {
+    return {
+      intro: "Escribí una pregunta como la haría un cliente. Ejemplo: “Hola, ¿qué tours tienen disponibles?”",
+      suggestions: [
+        "¿Qué tours tienen?",
+        "¿Cuánto cuesta el tour?",
+        "¿Qué incluye?",
+        "¿Cuánto dura?",
+      ],
+    };
+  }
+
+  return {
+    intro: "Escribí una pregunta como la haría un cliente. Podés usar una frase normal, con saludo y palabras de cortesía.",
+    suggestions: [
+      "Hola, ¿qué servicios tienen?",
+      "¿Cuánto cuesta?",
+      "¿Cuál es el horario?",
+      "¿Dónde están ubicados?",
+    ],
+  };
+}
+
 function productToDraft(product: Product): ProductDraft {
   return {
     externalCode: product.externalCode ?? "",
@@ -925,7 +975,7 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
 
             <div className={styles.chatBody}>
               <div className={styles.botBubble}>
-                Escribí una pregunta como la haría un cliente. Ejemplo: “¿Cuánto cuesta una habitación doble para dos personas?”
+                {botExamplesForBusiness(selectedBusiness?.type).intro}
               </div>
               {testQuery && botAnswer ? <div className={styles.userBubble}>{testQuery}</div> : null}
               {botAnswer ? <div className={styles.botBubble}>{botAnswer}</div> : null}
@@ -946,7 +996,7 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
             </div>
 
             <div className={styles.suggestions}>
-              {["¿Qué habitaciones tienen?", "¿Cuánto cuesta el tour?", "¿Qué incluye?", "¿A qué hora es el check-in?"].map((item) => (
+              {botExamplesForBusiness(selectedBusiness?.type).suggestions.map((item) => (
                 <button key={item} type="button" onClick={() => setTestQuery(item)}>{item}</button>
               ))}
             </div>
