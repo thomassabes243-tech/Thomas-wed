@@ -24,33 +24,64 @@ enum Direction {
   outbound
 }
 
+enum CatalogImportStatus {
+  uploaded
+  processing
+  review_required
+  approved
+  importing
+  completed
+  failed
+}
+
+enum CatalogImportMode {
+  update
+  replace
+}
+
+enum CatalogChangeAction {
+  created
+  updated
+  unchanged
+  rejected
+  deactivated
+}
+
 model Business {
-  id                        String         @id @default(cuid())
+  id                        String          @id @default(cuid())
   name                      String
   phoneNumber               String?
-  whatsappPhoneNumberId     String?        @unique
+  whatsappPhoneNumberId     String?         @unique
   whatsappBusinessAccountId String?
+  whatsappAccessTokenEncrypted String?
+  whatsappConnectionStatus String @default("disconnected")
+  whatsappLastError String?
+  whatsappConnectedAt DateTime?
   type                      String?
   description               String?
   address                   String?
-  timezone                  String         @default("America/Costa_Rica")
-  status                    String         @default("active")
-  createdAt                 DateTime       @default(now())
-  updatedAt                 DateTime       @updatedAt
+  country                   String?
+  timezone                  String          @default("America/Costa_Rica")
+  status                    String          @default("active")
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
   users                     BusinessUser[]
   botConfig                 BotConfig?
   items                     BusinessItem[]
+  products                  Product[]
+  catalogImports            CatalogImport[]
   customers                 Customer[]
   conversations             Conversation[]
 }
 
 model User {
-  id         String         @id @default(cuid())
-  name       String?
-  email      String         @unique
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  businesses BusinessUser[]
+  id             String          @id @default(cuid())
+  name           String?
+  email          String          @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  businesses     BusinessUser[]
+  catalogImports CatalogImport[]
 }
 
 model BusinessUser {
@@ -60,6 +91,7 @@ model BusinessUser {
   role       BusinessRole @default(owner)
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
   @@unique([userId, businessId])
   @@index([businessId])
 }
@@ -91,7 +123,107 @@ model BusinessItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
   @@index([businessId, available])
+}
+
+model Product {
+  id                   String                @id @default(cuid())
+  businessId           String
+  externalCode         String?
+  sku                  String?
+  name                 String
+  category             String?
+  description          String?
+  price                Decimal?              @db.Decimal(14, 2)
+  stock                Decimal?              @db.Decimal(14, 3)
+  presentation         String?
+  unit                 String?
+  requiresPrescription Boolean?
+  serviceType          String?
+  location             String?
+  duration             String?
+  capacity             Int?
+  checkInTime          String?
+  checkOutTime         String?
+  includes             String?
+  amenities            String?
+  availabilityNote     String?
+  reservationRequired  Boolean?
+  cancellationPolicy   String?
+  searchText           String                 @default("")
+  active               Boolean               @default(true)
+  sourceImportId       String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  business             Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sourceImport         CatalogImport?         @relation("ProductSourceImport", fields: [sourceImportId], references: [id], onDelete: SetNull)
+  changes              CatalogImportChange[]
+
+  @@unique([businessId, sku])
+  @@unique([businessId, externalCode])
+  @@index([businessId, active])
+  @@index([businessId, name])
+  @@index([businessId, category])
+  @@index([businessId, searchText])
+}
+
+model CatalogImport {
+  id            String                 @id @default(cuid())
+  businessId    String
+  filename      String
+  fileType      String
+  status        CatalogImportStatus    @default(uploaded)
+  mode          CatalogImportMode      @default(update)
+  totalRows     Int                    @default(0)
+  importedRows  Int                    @default(0)
+  updatedRows   Int                    @default(0)
+  unchangedRows Int                    @default(0)
+  rejectedRows  Int                    @default(0)
+  createdAt     DateTime               @default(now())
+  completedAt   DateTime?
+  errorSummary  String?
+  fileHash      String?
+  mapping       Json?
+  preview       Json?
+  createdById   String?
+  business      Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdBy     User?                  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  products      Product[]              @relation("ProductSourceImport")
+  changes       CatalogImportChange[]
+  rejects       CatalogImportReject[]
+
+  @@index([businessId, createdAt])
+  @@index([businessId, status])
+}
+
+model CatalogImportChange {
+  id         String              @id @default(cuid())
+  importId   String
+  productId  String?
+  rowNumber  Int?
+  action     CatalogChangeAction
+  identifier String?
+  beforeData Json?
+  afterData  Json?
+  createdAt  DateTime            @default(now())
+  import     CatalogImport       @relation(fields: [importId], references: [id], onDelete: Cascade)
+  product    Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([importId, action])
+  @@index([productId])
+}
+
+model CatalogImportReject {
+  id        String        @id @default(cuid())
+  importId  String
+  rowNumber Int?
+  reason    String
+  rowData   Json?
+  createdAt DateTime      @default(now())
+  import    CatalogImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId])
 }
 
 model Customer {
@@ -103,6 +235,7 @@ model Customer {
   updatedAt      DateTime       @updatedAt
   business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   conversations  Conversation[]
+
   @@unique([businessId, whatsappNumber])
   @@index([businessId])
 }
@@ -120,6 +253,7 @@ model Conversation {
   business        Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer        Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
   messages        Message[]
+
   @@index([businessId, status, lastMessageAt])
 }
 
@@ -132,6 +266,7 @@ model Message {
   whatsappMessageId String?      @unique
   createdAt         DateTime     @default(now())
   conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
   @@index([conversationId, createdAt])
 }
 
