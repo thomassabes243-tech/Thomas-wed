@@ -302,8 +302,8 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
 
   useEffect(() => {
-    void loadBusinesses();
-  }, []);
+    if (tab === "clientes") void loadBusinesses();
+  }, [tab]);
 
   async function loadBusinesses() {
     try {
@@ -1293,7 +1293,13 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
       ) : null}
 
       {businessId && tab === "whatsapp" && previewOnly ? (
-        <WhatsAppConnectionPanel businessId={businessId} />
+        <WhatsAppConnectionPanel
+          businessId={businessId}
+          onChanged={() => {
+            void loadDashboard();
+            void loadBusinesses();
+          }}
+        />
       ) : null}
 
       {businessId && tab === "configuracion" && settings ? (
