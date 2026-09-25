@@ -789,22 +789,47 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
               </div>
             ) : (
               <div className={styles.clientGrid}>
-                {businesses.map((business) => (
-                  <article className={styles.clientCard} key={business.id}>
-                    <div>
-                      <span className={styles.activeBadge}>Activo</span>
-                      <h3>{business.name}</h3>
-                      <p>{business.type || "Negocio"}{business.country ? ` · ${business.country}` : ""}</p>
-                    </div>
-                    <div className={styles.clientMeta}>
-                      {business.phoneNumber ? <span>📱 {business.phoneNumber}</span> : <span>WhatsApp pendiente</span>}
-                      {business.address ? <span>📍 {business.address}</span> : <span>Dirección pendiente</span>}
-                    </div>
-                    <button type="button" className={styles.primaryButton} onClick={async () => { await selectBusiness(business.id); setTab("resumen"); }}>
-                      Entrar al negocio
-                    </button>
-                  </article>
-                ))}
+                {businesses.map((business) => {
+                  const clientReadiness = readinessForBusiness(business);
+                  return (
+                    <article className={styles.clientCard} key={business.id}>
+                      <div className={styles.clientCardTop}>
+                        <div>
+                          <span className={business.botActive === false ? styles.inactiveBadge : styles.activeBadge}>
+                            {business.botActive === false ? "Bot pausado" : "Bot activo"}
+                          </span>
+                          <h3>{business.name}</h3>
+                          <p>{business.type || "Negocio"}{business.country ? ` · ${business.country}` : ""}</p>
+                        </div>
+                        <div className={styles.clientProgressMini}>
+                          <strong>{clientReadiness.percent}%</strong>
+                          <span>configurado</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.clientStatusGrid}>
+                        <span className={business.productCount ? styles.statusOk : styles.statusPending}>
+                          {business.productCount ? `✓ ${business.productCount} productos` : "○ Catálogo pendiente"}
+                        </span>
+                        <span className={business.whatsappConnectionStatus === "connected" ? styles.statusOk : styles.statusPending}>
+                          {business.whatsappConnectionStatus === "connected" ? "✓ WhatsApp conectado" : "○ WhatsApp pendiente"}
+                        </span>
+                        <span className={business.conversationCount ? styles.statusOk : styles.statusPending}>
+                          {business.conversationCount ? `✓ ${business.conversationCount} chats` : "○ Sin pruebas todavía"}
+                        </span>
+                      </div>
+
+                      <div className={styles.clientMeta}>
+                        {business.phoneNumber ? <span>📱 {business.phoneNumber}</span> : <span>Teléfono pendiente</span>}
+                        {business.address ? <span>📍 {business.address}</span> : <span>Dirección pendiente</span>}
+                      </div>
+
+                      <button type="button" className={styles.primaryButton} onClick={async () => { await selectBusiness(business.id); setTab("resumen"); }}>
+                        Abrir centro de control
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -821,17 +846,61 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
 
       {businessId && tab === "resumen" ? (
         <div className={styles.pageStack}>
-          <section className={styles.heroCard}>
-            <div>
-              <span className={styles.eyebrow}>CENTRO DE CONTROL</span>
-              <h2>{dashboard?.business.name ?? selectedBusiness?.name}</h2>
-              <p>
-                Administrá lo que MetaBot puede responder. Los cambios de este panel afectan únicamente este negocio.
-              </p>
+          <section className={styles.controlHero}>
+            <div className={styles.controlHeroMain}>
+              <div>
+                <span className={styles.eyebrow}>CENTRO DE CONTROL</span>
+                <h2>{dashboard?.business.name ?? selectedBusiness?.name}</h2>
+                <p>
+                  Todo lo necesario para preparar, probar y operar el bot de este negocio.
+                </p>
+              </div>
+              <div className={styles.heroStatusRow}>
+                <span className={dashboard?.business.botConfig?.active === false ? styles.inactiveBadge : styles.activeBadge}>
+                  {dashboard?.business.botConfig?.active === false ? "Bot pausado" : "Bot activo"}
+                </span>
+                <span className={dashboard?.business.whatsappConnectionStatus === "connected" ? styles.activeBadge : styles.pendingBadge}>
+                  {dashboard?.business.whatsappConnectionStatus === "connected" ? "WhatsApp conectado" : "WhatsApp pendiente"}
+                </span>
+              </div>
             </div>
-            <button type="button" className={styles.primaryButton} onClick={() => setTab("catalogo")}>
-              Ver catálogo
-            </button>
+
+            <div className={styles.readinessPanel}>
+              <div className={styles.readinessTop}>
+                <div>
+                  <span>Configuración del negocio</span>
+                  <strong>{readiness.percent}%</strong>
+                </div>
+                <span>{readiness.completed}/4 pasos</span>
+              </div>
+              <div className={styles.progressTrack}>
+                <span style={{ width: `${readiness.percent}%` }} />
+              </div>
+              <div className={styles.setupSteps}>
+                {readiness.steps.map((step) => (
+                  <button
+                    key={step.label}
+                    type="button"
+                    className={step.done ? styles.setupStepDone : styles.setupStep}
+                    onClick={() => setTab(step.tab)}
+                  >
+                    <span>{step.done ? "✓" : "○"}</span>
+                    {step.label}
+                  </button>
+                ))}
+              </div>
+              {nextStep ? (
+                <button type="button" className={styles.nextStepButton} onClick={() => setTab(nextStep.tab)}>
+                  <span>Siguiente paso</span>
+                  <strong>{nextStep.label} →</strong>
+                </button>
+              ) : (
+                <div className={styles.readyMessage}>
+                  <strong>✓ Configuración completa</strong>
+                  <span>El negocio está listo para operar y recibir conversaciones.</span>
+                </div>
+              )}
+            </div>
           </section>
 
           <section className={styles.metricGrid}>
@@ -847,26 +916,36 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
             <article className={styles.card}>
               <div className={styles.cardHeader}>
                 <div>
-                  <span className={styles.eyebrow}>ACCESO RÁPIDO</span>
-                  <h3>Qué querés hacer</h3>
+                  <span className={styles.eyebrow}>ACCIONES DEL NEGOCIO</span>
+                  <h3>Administrar MetaBot</h3>
                 </div>
               </div>
               <div className={styles.quickGrid}>
-                <button type="button" onClick={() => { openNewProduct(); setTab("catalogo"); }}>
-                  <strong>+ Agregar servicio</strong>
-                  <span>Cargar una habitación, tour, producto o servicio manualmente.</span>
-                </button>
                 <button type="button" onClick={() => setTab("simulador")}>
-                  <strong>Probar el bot</strong>
-                  <span>Preguntale como lo haría un cliente real.</span>
+                  <strong>💬 Probar el bot</strong>
+                  <span>Comprobá cómo responde con preguntas reales de clientes.</span>
                 </button>
+                <button type="button" onClick={() => setTab("catalogo")}>
+                  <strong>📦 Ver catálogo</strong>
+                  <span>{dashboard?.metrics.activeProducts ?? 0} productos o servicios disponibles para responder.</span>
+                </button>
+                <button type="button" onClick={() => setTab("conversaciones")}>
+                  <strong>🗨️ Revisar chats</strong>
+                  <span>{dashboard?.metrics.humanRequired ?? 0} conversaciones necesitan atención humana.</span>
+                </button>
+                {previewOnly ? (
+                  <button type="button" onClick={() => setTab("whatsapp")}>
+                    <strong>🟢 WhatsApp</strong>
+                    <span>{dashboard?.business.whatsappConnectionStatus === "connected" ? "Conexión activa y lista." : "Conectá el canal para recibir mensajes reales."}</span>
+                  </button>
+                ) : null}
                 <button type="button" onClick={() => setTab("importar")}>
-                  <strong>Importar Excel/CSV</strong>
-                  <span>Para catálogos grandes o actualizaciones masivas.</span>
+                  <strong>⬆️ Importar catálogo</strong>
+                  <span>Cargá o actualizá muchos productos desde Excel o CSV.</span>
                 </button>
                 <button type="button" onClick={() => setTab("configuracion")}>
-                  <strong>Configurar negocio</strong>
-                  <span>Datos, tono, mensajes y reglas del bot.</span>
+                  <strong>⚙️ Ajustes del negocio</strong>
+                  <span>Datos, tono, mensajes y reglas que usa el bot.</span>
                 </button>
               </div>
             </article>
@@ -874,22 +953,40 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
             <article className={styles.card}>
               <div className={styles.cardHeader}>
                 <div>
-                  <span className={styles.eyebrow}>ÚLTIMA ACTIVIDAD</span>
-                  <h3>Importaciones</h3>
+                  <span className={styles.eyebrow}>ESTADO RECIENTE</span>
+                  <h3>Actividad</h3>
                 </div>
               </div>
-              {!dashboard?.recentImports.length ? (
-                <p className={styles.muted}>Todavía no hay actividad de importación.</p>
-              ) : (
+              <div className={styles.healthList}>
+                <div>
+                  <span>Bot automático</span>
+                  <strong>{dashboard?.business.botConfig?.active === false ? "Pausado" : "Activo"}</strong>
+                </div>
+                <div>
+                  <span>Catálogo</span>
+                  <strong>{dashboard?.metrics.activeProducts ? `${dashboard.metrics.activeProducts} activos` : "Pendiente"}</strong>
+                </div>
+                <div>
+                  <span>WhatsApp</span>
+                  <strong>{dashboard?.business.whatsappConnectionStatus === "connected" ? "Conectado" : "Sin conectar"}</strong>
+                </div>
+                <div>
+                  <span>Mensajes reales</span>
+                  <strong>{dashboard?.metrics.webhookEvents ?? 0}</strong>
+                </div>
+              </div>
+
+              {dashboard?.recentImports.length ? (
                 <div className={styles.activityList}>
-                  {dashboard.recentImports.map((item) => (
+                  <span className={styles.eyebrow}>ÚLTIMA IMPORTACIÓN</span>
+                  {dashboard.recentImports.slice(0, 2).map((item) => (
                     <div key={item.id}>
                       <strong>{item.filename}</strong>
                       <span>{item.status} · {new Date(item.createdAt).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
             </article>
           </section>
         </div>
@@ -1007,21 +1104,45 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
 
       {businessId && tab === "simulador" ? (
         <div className={styles.pageStack}>
+          <section className={styles.toolbarCard}>
+            <div>
+              <span className={styles.eyebrow}>PRUEBA ANTES DE PUBLICAR</span>
+              <h2>Conversación de prueba</h2>
+              <p className={styles.muted}>Escribí como escribiría un cliente real. La respuesta usa los datos actuales de este negocio.</p>
+            </div>
+            <div className={styles.simulatorActions}>
+              <span className={settings?.business.botConfig?.active === false ? styles.inactiveBadge : styles.activeBadge}>
+                {settings?.business.botConfig?.active === false ? "Bot pausado" : "Bot activo"}
+              </span>
+              {(testQuery || botAnswer) ? (
+                <button type="button" className={styles.secondaryButton} onClick={() => { setTestQuery(""); setBotAnswer(""); }}>
+                  Limpiar
+                </button>
+              ) : null}
+            </div>
+          </section>
+
           <section className={styles.chatPanel}>
             <div className={styles.chatHeader}>
               <div className={styles.botAvatar}>M</div>
               <div>
-                <strong>MetaBot · {selectedBusiness?.name}</strong>
-                <span>Simulación con datos reales del catálogo</span>
+                <strong>{selectedBusiness?.name}</strong>
+                <span>MetaBot · respuesta automática</span>
               </div>
+              <span className={styles.chatOnline}>● En prueba</span>
             </div>
 
             <div className={styles.chatBody}>
               <div className={styles.botBubble}>
-                {botExamplesForBusiness(selectedBusiness?.type).intro}
+                {settings?.business.botConfig?.welcomeMessage || botExamplesForBusiness(selectedBusiness?.type).intro}
               </div>
               {testQuery && botAnswer ? <div className={styles.userBubble}>{testQuery}</div> : null}
-              {botAnswer ? <div className={styles.botBubble}>{botAnswer}</div> : null}
+              {botAnswer ? (
+                <>
+                  <div className={styles.botBubble}>{botAnswer}</div>
+                  <div className={styles.testSuccess}>✓ Respuesta generada con la información registrada del negocio</div>
+                </>
+              ) : null}
             </div>
 
             <div className={styles.chatComposer}>
@@ -1031,7 +1152,7 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && testQuery.trim()) void testCatalogAnswer();
                 }}
-                placeholder="Preguntale algo al bot..."
+                placeholder="Ejemplo: Hola, ¿tienen amoxicilina?"
               />
               <button type="button" className={styles.primaryButton} onClick={() => void testCatalogAnswer()} disabled={testingAnswer || !testQuery.trim()}>
                 {testingAnswer ? "…" : "Enviar"}
