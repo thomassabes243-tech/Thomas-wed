@@ -4,7 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import styles from "@/app/catalog/catalog.module.css";
 import WhatsAppConnectionPanel from "@/components/whatsapp-connection-panel";
 
-type Business = { id: string; name: string; country: string | null; type?: string | null; phoneNumber?: string | null; address?: string | null };
+type Business = {
+  id: string;
+  name: string;
+  country: string | null;
+  type?: string | null;
+  phoneNumber?: string | null;
+  address?: string | null;
+  whatsappConnectionStatus?: string | null;
+  botActive?: boolean;
+  productCount?: number;
+  conversationCount?: number;
+};
 type Tab = "clientes" | "resumen" | "catalogo" | "simulador" | "conversaciones" | "importar" | "whatsapp" | "configuracion";
 
 type Dashboard = {
@@ -12,6 +23,8 @@ type Dashboard = {
     type?: string | null;
     phoneNumber?: string | null;
     address?: string | null;
+    whatsappConnectionStatus?: string | null;
+    botConfig?: { active: boolean } | null;
   };
   metrics: {
     activeProducts: number;
@@ -19,6 +32,8 @@ type Dashboard = {
     imports: number;
     openConversations: number;
     humanRequired: number;
+    totalConversations: number;
+    webhookEvents: number;
     categories: number;
   };
   categories: string[];
@@ -194,6 +209,33 @@ function botExamplesForBusiness(type?: string | null) {
       "¿Dónde están ubicados?",
     ],
   };
+}
+
+function readinessForBusiness(business?: Business | null, dashboard?: Dashboard | null) {
+  if (!business && !dashboard?.business) {
+    return { percent: 0, completed: 0, steps: [] as Array<{ label: string; done: boolean; tab: Tab }> };
+  }
+
+  const current = dashboard?.business ?? business!;
+  const botActive = dashboard?.business.botConfig?.active ?? business?.botActive ?? true;
+  const productCount = dashboard?.metrics.activeProducts ?? business?.productCount ?? 0;
+  const tested = (dashboard?.metrics.totalConversations ?? business?.conversationCount ?? 0) > 0;
+  const whatsappConnected = current.whatsappConnectionStatus === "connected";
+  const basicReady = Boolean(current.name && current.type && current.phoneNumber);
+
+  const steps: Array<{ label: string; done: boolean; tab: Tab }> = [
+    { label: "Datos del negocio", done: basicReady, tab: "configuracion" },
+    { label: "Catálogo cargado", done: productCount > 0, tab: "catalogo" },
+    { label: "Bot probado", done: tested && botActive, tab: "simulador" },
+    { label: "WhatsApp conectado", done: whatsappConnected, tab: "whatsapp" },
+  ];
+
+  const completed = steps.filter((step) => step.done).length;
+  return { percent: completed * 25, completed, steps };
+}
+
+function nextSetupStep(readiness: ReturnType<typeof readinessForBusiness>) {
+  return readiness.steps.find((step) => !step.done) ?? null;
 }
 
 function productToDraft(product: Product): ProductDraft {
@@ -605,14 +647,15 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
 
   const metricCards = dashboard
     ? [
-        ["Servicios activos", dashboard.metrics.activeProducts],
-        ["Categorías", dashboard.metrics.categories],
-        ["Importaciones", dashboard.metrics.imports],
+        ["Productos activos", dashboard.metrics.activeProducts],
         ["Chats abiertos", dashboard.metrics.openConversations],
         ["Requieren humano", dashboard.metrics.humanRequired],
-        ["Inactivos", dashboard.metrics.inactiveProducts],
+        ["Webhooks reales", dashboard.metrics.webhookEvents],
       ]
     : [];
+
+  const readiness = readinessForBusiness(selectedBusiness, dashboard);
+  const nextStep = nextSetupStep(readiness);
 
   return (
     <div className={styles.appShell}>
@@ -641,13 +684,13 @@ export default function CatalogManager({ previewOnly = false }: { previewOnly?: 
       <nav className={styles.tabs}>
         {[
           ["clientes", "Clientes"],
-          ["resumen", "Resumen"],
+          ["resumen", "Inicio"],
           ["catalogo", "Catálogo"],
-          ["simulador", "Probar bot"],
+          ["simulador", "Probar"],
           ["conversaciones", "Chats"],
           ["importar", "Importar"],
-          ...(previewOnly ? [["whatsapp", "Conectar WhatsApp"]] : []),
-          ["configuracion", "Configurar"],
+          ...(previewOnly ? [["whatsapp", "WhatsApp"]] : []),
+          ["configuracion", "Ajustes"],
         ].map(([value, label]) => (
           <button
             key={value}
