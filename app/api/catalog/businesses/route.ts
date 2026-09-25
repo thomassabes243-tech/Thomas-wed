@@ -82,11 +82,28 @@ export async function GET() {
         type: true,
         phoneNumber: true,
         address: true,
+        whatsappConnectionStatus: true,
+        botConfig: { select: { active: true } },
+        _count: { select: { products: true, conversations: true } },
         createdAt: true,
       },
       orderBy: { createdAt: "desc" },
     });
-    return NextResponse.json({ businesses });
+    return NextResponse.json({
+      businesses: businesses.map((business) => ({
+        id: business.id,
+        name: business.name,
+        country: business.country,
+        type: business.type,
+        phoneNumber: business.phoneNumber,
+        address: business.address,
+        whatsappConnectionStatus: business.whatsappConnectionStatus,
+        botActive: business.botConfig?.active ?? true,
+        productCount: business._count.products,
+        conversationCount: business._count.conversations,
+        createdAt: business.createdAt,
+      })),
+    });
   } catch (error) {
     const status = (error as Error & { status?: number }).status ?? 400;
     return NextResponse.json(
