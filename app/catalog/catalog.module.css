@@ -54,3 +54,17 @@
 .connectionOverview{background:#fff;border:1px solid #dce5eb;border-radius:18px;padding:18px;display:grid;gap:17px;box-shadow:0 8px 28px rgba(18,41,59,.05)}.connectionPrimary{display:flex;gap:13px;align-items:center}.connectionPrimary h3{margin:3px 0 4px}.connectionPrimary p{margin:0;color:#617584;font-size:13px;line-height:1.45}.whatsappMark{width:46px;height:46px;border-radius:14px;background:#1fa855;color:#fff;display:grid;place-items:center;font-size:13px;font-weight:950;flex:0 0 auto}.channelChecks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.channelCheck,.channelCheckDone{display:flex;gap:8px;align-items:center;border:1px solid #dde5eb;border-radius:13px;padding:10px;background:#fafbfc}.channelCheckDone{background:#eff9f2;border-color:#cfe8d7}.channelCheck>span,.channelCheckDone>span{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#eef2f5;color:#6a7b88;font-size:11px;font-weight:900;flex:0 0 auto}.channelCheckDone>span{background:#ccebd7;color:#23613d}.channelCheck div,.channelCheckDone div{display:grid;gap:2px;min-width:0}.channelCheck strong,.channelCheckDone strong{font-size:12px}.channelCheck small,.channelCheckDone small{font-size:10px;color:#738490}
 .whatsappActions{display:flex;gap:9px;justify-content:flex-end;margin-top:16px}.whatsappButton{min-height:44px;border:0;border-radius:12px;padding:10px 16px;background:#1fa855;color:#fff;font:inherit;font-weight:900;cursor:pointer}.whatsappButton:disabled{opacity:.52;cursor:not-allowed}.setupNotice{display:grid;gap:4px;margin-top:12px;padding:11px 12px;border-radius:12px;background:#fff7e4;border:1px solid #efdbac;color:#735718}.setupNotice span{font-size:12px}
 .advancedDetails{background:#fff;border:1px solid #dce5eb;border-radius:16px;overflow:hidden}.advancedDetails summary{cursor:pointer;padding:14px 16px;font-weight:850;color:#405a6d;list-style:none}.advancedDetails summary::-webkit-details-marker{display:none}.advancedDetails summary:after{content:"+";float:right;font-size:18px}.advancedDetails[open] summary:after{content:"−"}.advancedBody{border-top:1px solid #edf1f4;padding:16px}
+
+@media(max-width:640px){
+  .controlHero{grid-template-columns:1fr;padding:15px;border-radius:17px}
+  .readinessPanel{padding:13px}
+  .setupSteps{grid-template-columns:1fr 1fr}
+  .setupStep,.setupStepDone{padding:8px;font-size:11px}
+  .channelChecks{grid-template-columns:1fr 1fr}
+  .whatsappHero{align-items:flex-start;flex-direction:column}
+  .whatsappActions{display:grid;grid-template-columns:1fr}
+  .whatsappActions>*{width:100%}
+  .clientCardTop{gap:8px}
+  .clientProgressMini strong{font-size:19px}
+  .connectionOverview{padding:15px}
+}
