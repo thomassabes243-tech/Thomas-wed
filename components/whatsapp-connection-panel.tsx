@@ -51,8 +51,10 @@ type EmbeddedAssets = {
 
 export default function WhatsAppConnectionPanel({
   businessId,
+  onChanged,
 }: {
   businessId: string;
+  onChanged?: () => void;
 }) {
   const [setup, setSetup] = useState<SetupPayload | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -137,6 +139,7 @@ export default function WhatsAppConnectionPanel({
       setSetup(data);
       setPhoneNumber(data.business?.phoneNumber ?? phoneNumber);
       setMessage("WhatsApp quedó conectado. Falta confirmar que Meta pueda entregar el primer webhook real.");
+      onChanged?.();
       codeRef.current = "";
       assetsRef.current = null;
     } catch (error) {
@@ -145,7 +148,7 @@ export default function WhatsAppConnectionPanel({
     } finally {
       setBusy(false);
     }
-  }, [businessId, phoneNumber, loadSetup]);
+  }, [businessId, phoneNumber, loadSetup, onChanged]);
 
   useEffect(() => {
     const receiveMessage = (event: MessageEvent) => {
@@ -204,6 +207,7 @@ export default function WhatsAppConnectionPanel({
       if (!response.ok) throw new Error(data.error ?? "No se pudo completar la acción.");
       setSetup(data);
       setPhoneNumber(data.business?.phoneNumber ?? phoneNumber);
+      onChanged?.();
       return data as SetupPayload;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo completar la acción.");
