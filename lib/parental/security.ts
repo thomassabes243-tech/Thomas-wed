@@ -36,8 +36,10 @@ export function adminEmail() {
 
 export function isAdminRequest(request: NextRequest) {
   const key = request.headers.get("x-admin-key") || "";
+  const email = (request.headers.get("x-admin-email") || "").trim().toLowerCase();
+  const configuredEmail = adminEmail().trim().toLowerCase();
   const configuredHash = process.env.PARENTAL_ADMIN_KEY_HASH || DEFAULT_ADMIN_KEY_HASH;
-  return safeHexEqual(sha256(key), configuredHash);
+  return email === configuredEmail && safeHexEqual(sha256(key), configuredHash);
 }
 
 export async function authenticateDevice(request: NextRequest) {
