@@ -1,0 +1,29 @@
+name: Check Parental Dual Web
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chatgpt/parental-dual
+    paths:
+      - "app/**"
+      - "lib/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/parental-dual-web.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          PARENTAL_DATABASE_URL: "postgresql://example:example@localhost:5432/example"
+          ADMIN_EMAIL: "tg321920@gmail.com"
