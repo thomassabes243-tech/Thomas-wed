@@ -263,7 +263,7 @@ export default function ParentalDualPage() {
                     <span>{audio?.status || "sin sesión"}</span>
                   </div>
                   <div className={styles.audioBox}>
-                    {audioSrc ? <audio key={audio.updatedAt || undefined} controls autoPlay src={audioSrc} /> : <p>Esperando autorización y primer fragmento.</p>}
+                    {audioSrc ? <audio key={audio?.updatedAt || undefined} controls autoPlay src={audioSrc} /> : <p>Esperando autorización y primer fragmento.</p>}
                   </div>
                 </article>
               </div>
