@@ -30,6 +30,8 @@ type MediaState = {
 export default function ParentalDualPage() {
   const [adminKey, setAdminKey] = useState("");
   const [keyDraft, setKeyDraft] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [emailDraft, setEmailDraft] = useState("tg321920@gmail.com");
   const [adminEmail, setAdminEmail] = useState("");
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -41,20 +43,25 @@ export default function ParentalDualPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem("parentalAdminKey");
-    if (saved) setAdminKey(saved);
+    const savedKey = sessionStorage.getItem("parentalAdminKey");
+    const savedEmail = sessionStorage.getItem("parentalAdminEmail");
+    if (savedKey && savedEmail) {
+      setAdminKey(savedKey);
+      setAuthEmail(savedEmail);
+    }
   }, []);
 
   const headers = useMemo(() => ({
     "content-type": "application/json",
     "x-admin-key": adminKey,
-  }), [adminKey]);
+    "x-admin-email": authEmail,
+  }), [adminKey, authEmail]);
 
   const loadDevices = useCallback(async () => {
-    if (!adminKey) return;
+    if (!adminKey || !authEmail) return;
     const response = await fetch("/api/parental/admin/devices", { headers, cache: "no-store" });
     if (!response.ok) {
-      setMessage(response.status === 401 ? "Clave incorrecta." : "No se pudo consultar el servidor.");
+      setMessage(response.status === 401 ? "Correo o clave incorrectos." : "No se pudo consultar el servidor.");
       return;
     }
     const data = await response.json();
@@ -62,7 +69,7 @@ export default function ParentalDualPage() {
     setDevices(data.devices || []);
     if (!selectedId && data.devices?.length) setSelectedId(data.devices[0].id);
     setMessage("Panel conectado.");
-  }, [adminKey, headers, selectedId]);
+  }, [adminKey, authEmail, headers, selectedId]);
 
   const loadNotifications = useCallback(async () => {
     if (!adminKey || !selectedId) return;
@@ -87,14 +94,14 @@ export default function ParentalDualPage() {
   }, [adminKey, headers, selectedId]);
 
   useEffect(() => {
-    if (!adminKey) return;
+    if (!adminKey || !authEmail) return;
     void loadDevices();
     const timer = window.setInterval(() => void loadDevices(), 5000);
     return () => window.clearInterval(timer);
-  }, [adminKey, loadDevices]);
+  }, [adminKey, authEmail, loadDevices]);
 
   useEffect(() => {
-    if (!selectedId || !adminKey) return;
+    if (!selectedId || !adminKey || !authEmail) return;
     void loadNotifications();
     void loadMedia();
     const timer = window.setInterval(() => {
@@ -102,14 +109,17 @@ export default function ParentalDualPage() {
       void loadMedia();
     }, 3000);
     return () => window.clearInterval(timer);
-  }, [selectedId, adminKey, loadNotifications, loadMedia]);
+  }, [selectedId, adminKey, authEmail, loadNotifications, loadMedia]);
 
   function login(event: React.FormEvent) {
     event.preventDefault();
-    const value = keyDraft.trim();
-    if (!value) return;
-    sessionStorage.setItem("parentalAdminKey", value);
-    setAdminKey(value);
+    const key = keyDraft.trim();
+    const email = emailDraft.trim().toLowerCase();
+    if (!key || !email) return;
+    sessionStorage.setItem("parentalAdminKey", key);
+    sessionStorage.setItem("parentalAdminEmail", email);
+    setAdminKey(key);
+    setAuthEmail(email);
     setKeyDraft("");
   }
 
@@ -153,22 +163,31 @@ export default function ParentalDualPage() {
 
   function logout() {
     sessionStorage.removeItem("parentalAdminKey");
+    sessionStorage.removeItem("parentalAdminEmail");
     setAdminKey("");
+    setAuthEmail("");
     setDevices([]);
     setNotifications([]);
     setSelectedId("");
     setMessage("Sesión cerrada.");
   }
 
-  if (!adminKey) {
+  if (!adminKey || !authEmail) {
     return (
       <main className={styles.shell}>
         <section className={styles.loginCard}>
           <div className={styles.logo}>PD</div>
           <p className={styles.kicker}>PARENTAL DUAL</p>
           <h1>Panel privado del tutor</h1>
-          <p>La clave se guarda solo durante esta sesión del navegador.</p>
+          <p>El panel solo acepta el correo administrador configurado y su clave privada.</p>
           <form onSubmit={login} className={styles.stack}>
+            <input
+              type="email"
+              value={emailDraft}
+              onChange={(e) => setEmailDraft(e.target.value)}
+              placeholder="Correo administrador"
+              autoComplete="email"
+            />
             <input
               type="password"
               value={keyDraft}
