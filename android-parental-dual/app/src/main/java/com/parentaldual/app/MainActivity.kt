@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var registered by remember { mutableStateOf(Prefs.registered(this)) }
                     var baseUrl by remember {
-                        mutableStateOf(Prefs.baseUrl(this).ifBlank { "https://TU-PROYECTO.vercel.app" })
+                        mutableStateOf(Prefs.baseUrl(this).ifBlank { "https://thomas-wed.vercel.app" })
                     }
                     var email by remember { mutableStateOf(Prefs.email(this)) }
                     var deviceName by remember {
