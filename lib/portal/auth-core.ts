@@ -29,11 +29,11 @@ export function portalTokenHash(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-export type PortalPermission = "read" | "manage" | "invite";
+export type PortalPermission = "read" | "handle" | "manage" | "invite";
 export function portalRoleAllows(role: BusinessRole, permission: PortalPermission): boolean {
   if (role === "owner") return true;
   if (role === "admin") return true;
-  return permission === "read";
+  return permission === "read" || permission === "handle";
 }
 
 export function canInvitePortalRole(

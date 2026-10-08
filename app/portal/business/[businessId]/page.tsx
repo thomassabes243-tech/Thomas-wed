@@ -28,6 +28,9 @@ export default async function BusinessPortalPage({
       <p><Link href="/portal">← Mis negocios</Link></p>
       <h1>{membership.business.name}</h1>
       <p>Acceso: {membership.role} · Datos reales del catálogo y las conversaciones guardadas.</p>
+      <p><Link href={"/portal/business/" + encodeURIComponent(businessId) + "/inbox"}>
+        Abrir bandeja de conversaciones y asignaciones →
+      </Link></p>
       <section>
         <h2>Resumen</h2>
         <p>Productos activos: {totalProducts}</p>
