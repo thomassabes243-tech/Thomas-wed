@@ -3,8 +3,8 @@
 | Fase | Estado | Condición de salida |
 | --- | --- | --- |
 | 0 Auditoría y documentación | PARTIAL | Inventario exhaustivo de referencias/rutas y APIs |
-| 1A Seguridad del acceso operador Preview | IMPLEMENTED_PENDING_CI | Hash, sesiones, alcance y Origin más pruebas |
-| 1B Autenticación de clientes | NOT_STARTED | Login por usuario/tenant, RBAC y E2E A/B |
+| 1A Seguridad del acceso operador Preview | CI PASS PREVIOUS BRANCH | Hash, sesiones, alcance y Origin más pruebas |
+| 1B Autenticación de clientes | PARTIAL: PREVIEW ONLY, NOT TESTED WITH REAL DB | Login por usuario/tenant, RBAC y E2E A/B |
 | 1C WhatsApp fiable | NOT_STARTED | Idempotencia, retries, envíos seguros y pruebas sandbox |
 | 2 Inbox, CRM y base de conocimiento | NOT_STARTED | Flujos persistentes con control humano |
 | 3 Agentes IA y flujos automatizados | NOT_STARTED | Editor + motor ejecutor + límites y tests |

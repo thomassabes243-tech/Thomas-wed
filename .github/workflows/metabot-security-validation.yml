@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - feature/metabot-security-foundation-20261008
+      - feature/metabot-tenant-portal-20261008
   pull_request:
     branches:
       - main
       - feature/catalog-importer
+      - feature/metabot-security-foundation-20261008
   workflow_dispatch:
 
 permissions:
@@ -42,6 +44,8 @@ jobs:
         run: npm run lint
       - name: Security regression tests
         run: npm run test:security
+      - name: Portal role and token tests
+        run: npm run test:portal
       - name: Existing catalog smoke test
         run: npx --yes tsx scripts/catalog-importer-smoke.ts
       - name: Build without production credentials

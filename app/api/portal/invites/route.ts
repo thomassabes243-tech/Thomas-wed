@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BusinessRole } from "@prisma/client";
 import { db } from "@/lib/db";
-import { hasCatalogAdminSession, hasCatalogBusinessScope } from "@/lib/catalog/admin-session";
-import { currentPortalUser, requirePortalBusiness, requirePortalPreview } from "@/lib/portal/auth";
+import { hasCatalogAdminSession } from "@/lib/catalog/admin-session";
+import { requirePortalBusiness, requirePortalPreview } from "@/lib/portal/auth";
 import {
   canInvitePortalRole,
   normalizePortalEmail,
@@ -30,9 +30,7 @@ export async function POST(request: NextRequest) {
     }
     const role = requestedRole as BusinessRole;
     const operator = await hasCatalogAdminSession();
-    if (operator) {
-      if (!(await hasCatalogBusinessScope(businessId))) return errorResponse("Seleccioná primero el negocio autorizado.", 403);
-    } else {
+    if (!operator) {
       const { membership } = await requirePortalBusiness(businessId, "invite");
       if (!canInvitePortalRole(membership.role, role)) return errorResponse("El rol solicitado no está autorizado.", 403);
     }

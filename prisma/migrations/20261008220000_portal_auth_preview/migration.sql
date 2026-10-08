@@ -1,5 +1,4 @@
 -- Additive schema only; DO NOT execute against production without explicit approval.
-ALTER TYPE "BusinessRole" ADD VALUE IF NOT EXISTS 'agent';
 ALTER TABLE "User" ADD COLUMN "passwordHash" TEXT;
 
 CREATE TABLE "PortalSession" (
