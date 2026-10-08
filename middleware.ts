@@ -19,5 +19,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/catalog/:path*"],
+  matcher: ["/api/catalog/:path*", "/api/portal/:path*"],
 };

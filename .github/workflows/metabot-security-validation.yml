@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - feature/metabot-security-foundation-20261008
+      - feature/metabot-tenant-portal-20261008
   pull_request:
     branches:
       - main
       - feature/catalog-importer
+      - feature/metabot-security-foundation-20261008
   workflow_dispatch:
 
 permissions:
@@ -42,7 +44,46 @@ jobs:
         run: npm run lint
       - name: Security regression tests
         run: npm run test:security
+      - name: Portal role and token tests
+        run: npm run test:portal
       - name: Existing catalog smoke test
         run: npx --yes tsx scripts/catalog-importer-smoke.ts
       - name: Build without production credentials
         run: npm run build
+
+  portal-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: metabot
+          POSTGRES_PASSWORD: disposable-local-test-only
+          POSTGRES_DB: metabot_portal_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U metabot -d metabot_portal_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://metabot:disposable-local-test-only@localhost:5432/metabot_portal_test
+      PORTAL_TEST_DB: "true"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install and generate Prisma
+        run: npm ci
+      - name: Set up isolated synthetic database
+        run: npx prisma db push
+      - name: Verify real tenant access rules
+        run: npx --yes tsx scripts/portal-db-smoke.ts
+      - name: Verify public lead API and persistence
+        run: npx --yes tsx scripts/leads-db-smoke.ts

@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
-    "test:security": "npx --yes tsx scripts/security-smoke.ts"
+    "test:security": "npx --yes tsx scripts/security-smoke.ts",
+    "test:portal": "npx --yes tsx scripts/portal-security-smoke.ts"
   },
   "dependencies": {
     "@neon/config": "^1.7.1",

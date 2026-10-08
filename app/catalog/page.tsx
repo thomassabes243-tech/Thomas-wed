@@ -14,6 +14,8 @@ export default async function CatalogPage() {
           <h1>Centro de clientes</h1>
           <p className={styles.muted}>Creá negocios, configurá su bot, cargá información y probalo antes de conectarlo a WhatsApp.</p>
         </div>
+        <a href="/catalog/invites" className={styles.secondaryButton}>Invitar usuarios (pruebas)</a>
+        <a href="/catalog/leads" className={styles.secondaryButton}>Solicitudes comerciales</a>
         <form action="/api/catalog/logout" method="post">
           <button className={styles.secondaryButton} type="submit">Salir</button>
         </form>
