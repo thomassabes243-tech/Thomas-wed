@@ -16,6 +16,7 @@ export default async function CatalogPage() {
         </div>
         <a href="/catalog/invites" className={styles.secondaryButton}>Invitar usuarios (pruebas)</a>
         <a href="/catalog/leads" className={styles.secondaryButton}>Solicitudes comerciales</a>
+        <a href="/catalog/whatsapp-events" className={styles.secondaryButton}>Diagnóstico WhatsApp</a>
         <form action="/api/catalog/logout" method="post">
           <button className={styles.secondaryButton} type="submit">Salir</button>
         </form>
