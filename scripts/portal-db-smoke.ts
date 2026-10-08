@@ -10,6 +10,7 @@ if (process.env.PORTAL_TEST_DB !== "true" ||
   throw new Error("Only a disposable local metabot_portal_test database is allowed.");
 }
 
+async function main() {
 const db = new PrismaClient();
 const id = randomUUID().replaceAll("-", "");
 const businessA = "qa-company-a-" + id;
@@ -58,3 +59,7 @@ try {
   await db.user.deleteMany({ where: { id: { in: [ownerA, agentB] } } });
   await db.$disconnect();
 }
+
+}
+
+main().catch(error => { console.error(error); process.exitCode = 1; });
