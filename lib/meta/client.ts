@@ -97,6 +97,7 @@ export async function sendWhatsAppText(
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
       },
+      signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({
         messaging_product: "whatsapp",
         recipient_type: "individual",
