@@ -5,6 +5,7 @@ on:
     branches:
       - feature/metabot-security-foundation-20261008
       - feature/metabot-tenant-portal-20261008
+      - feature/metabot-whatsapp-delivery-20261008
   pull_request:
     branches:
       - main
@@ -87,3 +88,5 @@ jobs:
         run: npx --yes tsx scripts/portal-db-smoke.ts
       - name: Verify public lead API and persistence
         run: npx --yes tsx scripts/leads-db-smoke.ts
+      - name: Verify WhatsApp idempotency and delivery states (no real sends)
+        run: npx --yes tsx scripts/whatsapp-delivery-db-smoke.ts
