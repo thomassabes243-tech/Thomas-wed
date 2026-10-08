@@ -138,7 +138,7 @@ export async function handleWhatsAppInbound(
           })
         : null;
 
-      const requiresHandoff = !business.botConfig?.active ||
+      const requiresHandoff = business.botConfig?.active === false ||
         Boolean(activeConversation?.assignedToHuman ||
                 activeConversation?.status === "human_required");
       const calculated = requiresHandoff
