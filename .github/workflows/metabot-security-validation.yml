@@ -1,0 +1,48 @@
+name: MetaBot security and build validation
+
+on:
+  push:
+    branches:
+      - feature/metabot-security-foundation-20261008
+  pull_request:
+    branches:
+      - main
+      - feature/catalog-importer
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: metabot-security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://user:password@localhost:5432/metabot_validation
+      DEMO_MODE: "true"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+          cache: "npm"
+      - name: Install reproducible dependencies
+        run: npm ci
+      - name: Generate Prisma
+        run: npx prisma generate
+      - name: TypeScript verification
+        run: npm run typecheck
+      - name: ESLint
+        run: npm run lint
+      - name: Security regression tests
+        run: npm run test:security
+      - name: Existing catalog smoke test
+        run: npx --yes tsx scripts/catalog-importer-smoke.ts
+      - name: Build without production credentials
+        run: npm run build
