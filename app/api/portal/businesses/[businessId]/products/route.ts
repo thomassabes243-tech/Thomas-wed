@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { PortalProductInput } from "@/lib/portal/product-input";
 import { db } from "@/lib/db";
 import { requirePortalBusiness } from "@/lib/portal/auth";
 import { buildProductSearchText } from "@/lib/catalog/normalize";
-
-const ProductInput = z.object({
-  name: z.string().trim().min(1).max(160),
-  category: z.string().trim().max(80).optional(),
-  description: z.string().trim().max(2000).optional(),
-  price: z.union([z.literal(""), z.string().regex(/^\d{1,10}(\.\d{1,2})?$/)]).optional(),
-}).strict();
 
 function failed(err: unknown) {
   const status = (err as Error & { status?: number })?.status ?? 500;
@@ -45,7 +38,7 @@ export async function POST(
   try {
     const { businessId } = await context.params;
     await requirePortalBusiness(businessId, "manage");
-    const body = ProductInput.safeParse(await request.json().catch(() => null));
+    const body = PortalProductInput.safeParse(await request.json().catch(() => null));
     if (!body.success) return NextResponse.json({ error: "Revisá el nombre y precio del producto." }, { status: 400 });
     const { name, category, description, price } = body.data;
     const product = await db.product.create({

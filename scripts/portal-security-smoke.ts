@@ -1,3 +1,4 @@
+import { PortalProductInput } from "../lib/portal/product-input";
 import assert from "node:assert/strict";
 import {
   canInvitePortalRole,
@@ -33,4 +34,12 @@ assert.equal(canInvitePortalRole("admin", "owner"), false);
 assert.equal(canInvitePortalRole("admin", "admin"), false);
 assert.equal(canInvitePortalRole("admin", "agent"), true);
 assert.equal(canInvitePortalRole("agent", "agent"), false);
+
+// Real validation contract used by the authenticated product endpoint.
+assert.equal(PortalProductInput.safeParse({ name: "Taza", price: "3500.00" }).success, true);
+assert.equal(PortalProductInput.safeParse({ name: "  " }).success, false);
+assert.equal(PortalProductInput.safeParse({ name: "Taza", price: "-1" }).success, false);
+assert.equal(PortalProductInput.safeParse({ name: "Taza", price: "12.999" }).success, false);
+assert.equal(PortalProductInput.safeParse({ name: "Taza", businessId: "another-company" }).success, false);
+
 console.log("PASS: portal input validation, invitation token uniqueness, role authorization and invitation rules.");
