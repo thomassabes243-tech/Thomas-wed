@@ -275,12 +275,26 @@ model Message {
 }
 
 model WebhookEvent {
-  id          String    @id @default(cuid())
-  eventId     String    @unique
-  businessId  String?
-  receivedAt  DateTime  @default(now())
-  processedAt DateTime?
-  status      String    @default("received")
+  id                String    @id @default(cuid())
+  eventId           String    @unique
+  businessId        String?
+  fromNumber        String?
+  customerName      String?
+  bodyText          String?   @db.Text
+  replyText         String?   @db.Text
+  conversationId    String?
+  requiresHuman     Boolean?
+  deliveryState     String    @default("pending")
+  outboundMessageId String?
+  attemptCount      Int       @default(0)
+  claimExpiresAt    DateTime?
+  lastError         String?   @db.Text
+  receivedAt        DateTime  @default(now())
+  processedAt       DateTime?
+  status            String    @default("received")
+
+  @@index([status, claimExpiresAt])
+  @@index([businessId, status])
 }
 
 model PortalSession {

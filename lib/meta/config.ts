@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 export function assertWhatsAppPreviewOnly() {
   const allowed =
     process.env.VERCEL_ENV === "preview" ||
@@ -13,21 +11,9 @@ export function assertWhatsAppPreviewOnly() {
 }
 
 export function getWhatsAppVerifyToken() {
-  const configured = process.env.WHATSAPP_VERIFY_TOKEN?.trim();
-  if (configured) return configured;
-
-  if (process.env.VERCEL_ENV === "preview") {
-    const basis = process.env.DATABASE_URL || process.env.CATALOG_ADMIN_SECRET;
-    if (basis) {
-      return crypto
-        .createHash("sha256")
-        .update(`metabot-preview-whatsapp:${basis}`)
-        .digest("hex")
-        .slice(0, 32);
-    }
-  }
-
-  return null;
+  // A webhook verify token must be an explicit, independent secret. Never
+  // derive it from DATABASE_URL, a shared admin password or another credential.
+  return process.env.WHATSAPP_VERIFY_TOKEN?.trim() || null;
 }
 
 export function getWhatsAppApiVersion() {
