@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { portalRoleAllows } from "@/lib/portal/auth-core";
 import { requirePortalBusiness } from "@/lib/portal/auth";
 import PortalInviteForm from "@/components/portal-invite-form";
+import PortalProductForm from "@/components/portal-product-form";
 
 export default async function BusinessPortalPage({
   params,
@@ -42,6 +43,7 @@ export default async function BusinessPortalPage({
         ) : <p>No hay productos activos registrados.</p>}
         {totalProducts > 20 && <p>Mostrando los primeros 20 productos.</p>}
       </section>
+      {portalRoleAllows(membership.role, "manage") && <PortalProductForm businessId={businessId} />}
       {portalRoleAllows(membership.role, "invite") && (
         <PortalInviteForm businesses={[{ id: businessId, name: membership.business.name }]}
           roles={membership.role === "owner" ? ["owner", "admin", "agent"] : ["agent"]} />
