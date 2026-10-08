@@ -95,6 +95,7 @@ model BusinessUser {
   role       BusinessRole @default(owner)
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assignedConversations Conversation[]
 
   @@unique([userId, businessId])
   @@index([businessId])
@@ -251,6 +252,8 @@ model Conversation {
   status          ConversationStatus @default(open)
   priority        Int                @default(0)
   assignedToHuman Boolean            @default(false)
+  assignedBusinessUserId String?
+  assignedBusinessUser BusinessUser?  @relation(fields: [assignedBusinessUserId], references: [id], onDelete: SetNull)
   lastMessageAt   DateTime           @default(now())
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
@@ -259,6 +262,7 @@ model Conversation {
   messages        Message[]
 
   @@index([businessId, status, lastMessageAt])
+  @@index([businessId, assignedBusinessUserId])
 }
 
 model Message {
