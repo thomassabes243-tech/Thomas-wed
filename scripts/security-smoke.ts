@@ -1,3 +1,4 @@
+import { isTrustedCatalogMutationOrigin } from "../lib/catalog/request-origin";
 import assert from "node:assert/strict";
 import {
   OPERATOR_SESSION_TTL_MS,
@@ -30,7 +31,7 @@ const cookie = issueOperatorSession(secret, now);
 const session = readOperatorSession(cookie, secret, now + 1000);
 assert.ok(session);
 assert.equal(readOperatorSession(cookie, "wrong-secret-but-its-length-is-still-32-characters", now + 1), null);
-assert.equal(readOperatorSession(cookie.replace(/.$/, "X"), secret, now + 1), null);
+assert.equal(readOperatorSession("Z" + cookie.slice(1), secret, now + 1), null);
 assert.equal(readOperatorSession(cookie, secret, now + OPERATOR_SESSION_TTL_MS), null);
 assert.equal(readOperatorSession(cookie, secret, now - 1), null);
 
@@ -39,7 +40,14 @@ assert.equal(verifyBusinessScope(businessA, "business-A", session, secret), true
 assert.equal(verifyBusinessScope(businessA, "business-B", session, secret), false);
 const anotherSession = readOperatorSession(issueOperatorSession(secret, now), secret, now)!;
 assert.equal(verifyBusinessScope(businessA, "business-A", anotherSession, secret), false);
-assert.equal(verifyBusinessScope(businessA.replace(/.$/, "X"), "business-A", session, secret), false);
+assert.equal(verifyBusinessScope("X" + businessA.slice(1), "business-A", session, secret), false);
 assert.equal(verifyBusinessScope(businessA, "business-A", null, secret), false);
+
+assert.equal(isTrustedCatalogMutationOrigin("https://metabot.example", "https://metabot.example"), true);
+assert.equal(isTrustedCatalogMutationOrigin("https://attacker.example", "https://metabot.example"), false);
+assert.equal(isTrustedCatalogMutationOrigin("https://metabot.example.attacker.test", "https://metabot.example"), false);
+assert.equal(isTrustedCatalogMutationOrigin("http://metabot.example", "https://metabot.example"), false);
+assert.equal(isTrustedCatalogMutationOrigin(null, "https://metabot.example"), false);
+assert.equal(isTrustedCatalogMutationOrigin("http://localhost:3000", "http://localhost:3000"), true);
 
 console.log("PASS: password hashing, fail-closed preview guard, expiring random sessions, session-bound business scopes.");
