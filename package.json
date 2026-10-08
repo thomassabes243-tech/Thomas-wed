@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:security": "npx --yes tsx scripts/security-smoke.ts"
   },
   "dependencies": {
     "@neon/config": "^1.7.1",

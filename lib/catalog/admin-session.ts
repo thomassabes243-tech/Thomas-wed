@@ -1,84 +1,78 @@
-import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
+import {
+  issueBusinessScope,
+  issueOperatorSession,
+  operatorCredentialsConfigured,
+  OPERATOR_SESSION_TTL_MS,
+  readOperatorSession,
+  verifyAdminPassword,
+  verifyBusinessScope,
+} from "./auth-core";
 
 const ADMIN_COOKIE = "metabot_catalog_admin";
 const BUSINESS_COOKIE = "metabot_catalog_business";
-const PREVIEW_ADMIN_PASSWORD_HASH =
-  "3901e1c18ea017bfc4584d8b183831d90051481dd25ffeab8d8392a0daa8b6a5";
 
-function sessionSecret() {
-  const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
-  if (explicit) return explicit;
-
-  if (process.env.VERCEL_ENV === "preview") {
-    const databaseUrl = process.env.DATABASE_URL?.trim();
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL no está configurado para Preview.");
-    }
-
-    return createHash("sha256")
-      .update(`metabot-catalog-preview-session:${databaseUrl}`)
-      .digest("hex");
-  }
-
-  throw new Error("CATALOG_ADMIN_SECRET no está configurado.");
+// An intentionally Preview-only platform operator. A real client login with
+// BusinessUser role checks is mandatory before enabling customer production.
+export function isCatalogOperatorConfigured(): boolean {
+  return operatorCredentialsConfigured();
 }
 
-function digest(value: string) {
-  return createHmac("sha256", sessionSecret()).update(value).digest("hex");
-}
-
-function safeEqual(a: string, b: string) {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
-
-function adminToken() {
-  return digest("metabot-catalog-admin-v1");
+async function currentOperatorSession() {
+  if (!isCatalogOperatorConfigured()) return null;
+  const jar = await cookies();
+  return readOperatorSession(
+    jar.get(ADMIN_COOKIE)?.value,
+    process.env.CATALOG_SESSION_SECRET,
+  );
 }
 
 export async function hasCatalogAdminSession() {
-  const jar = await cookies();
-  const supplied = jar.get(ADMIN_COOKIE)?.value;
-  return Boolean(supplied && safeEqual(supplied, adminToken()));
+  return Boolean(await currentOperatorSession());
 }
 
 export async function createCatalogAdminSession() {
+  if (!isCatalogOperatorConfigured()) {
+    throw new Error("Acceso de operador no configurado para Preview.");
+  }
   const jar = await cookies();
-  jar.set(ADMIN_COOKIE, adminToken(), {
+  jar.set(ADMIN_COOKIE, issueOperatorSession(process.env.CATALOG_SESSION_SECRET!), {
     httpOnly: true,
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 8,
+    maxAge: OPERATOR_SESSION_TTL_MS / 1000,
   });
+  // Selecting a business in an old session does not confer access in a new one.
+  jar.delete(BUSINESS_COOKIE);
 }
 
 export async function createCatalogBusinessScope(businessId: string) {
+  const session = await currentOperatorSession();
+  if (!session) throw new Error("Sesión administrativa inválida o vencida.");
   const jar = await cookies();
-  const signature = digest(`metabot-catalog-business-v1:${businessId}`);
-  jar.set(BUSINESS_COOKIE, `${businessId}.${signature}`, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 8,
-  });
+  jar.set(
+    BUSINESS_COOKIE,
+    issueBusinessScope(businessId, session, process.env.CATALOG_SESSION_SECRET!),
+    {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: Math.max(0, Math.floor((session.expiresAt - Date.now()) / 1000)),
+    },
+  );
 }
 
 export async function hasCatalogBusinessScope(businessId: string) {
+  const session = await currentOperatorSession();
   const jar = await cookies();
-  const value = jar.get(BUSINESS_COOKIE)?.value ?? "";
-  const separator = value.lastIndexOf(".");
-  if (separator <= 0) return false;
-
-  const scopedBusinessId = value.slice(0, separator);
-  const suppliedSignature = value.slice(separator + 1);
-  if (scopedBusinessId !== businessId) return false;
-
-  const expectedSignature = digest(`metabot-catalog-business-v1:${businessId}`);
-  return safeEqual(suppliedSignature, expectedSignature);
+  return verifyBusinessScope(
+    jar.get(BUSINESS_COOKIE)?.value,
+    businessId,
+    session,
+    process.env.CATALOG_SESSION_SECRET,
+  );
 }
 
 export async function clearCatalogAdminSession() {
@@ -88,16 +82,6 @@ export async function clearCatalogAdminSession() {
 }
 
 export function verifyCatalogAdminPassword(value: string) {
-  if (process.env.VERCEL_ENV === "preview") {
-    const suppliedHash = createHash("sha256").update(value).digest("hex");
-    if (safeEqual(suppliedHash, PREVIEW_ADMIN_PASSWORD_HASH)) return true;
-
-    const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
-    return Boolean(explicit && safeEqual(value, explicit));
-  }
-
-  const explicit = process.env.CATALOG_ADMIN_SECRET?.trim();
-  if (explicit) return safeEqual(value, explicit);
-
-  return false;
+  if (!isCatalogOperatorConfigured()) return false;
+  return verifyAdminPassword(value, process.env.CATALOG_ADMIN_PASSWORD_SCRYPT);
 }
