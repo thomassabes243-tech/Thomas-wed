@@ -317,3 +317,28 @@ model PortalLoginAttempt {
   blockedUntil    DateTime?
   updatedAt       DateTime @updatedAt
 }
+
+/**
+ * Requests from the public site are *prospects*, not authenticated tenants.
+ * These records never grant access to Business data.
+ */
+model SalesLead {
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  phone          String?
+  company        String
+  sector         String
+  interest       String
+  message        String
+  status         String   @default("new")
+  source         String   @default("website")
+  submissionKey  String   @unique
+  consentedAt    DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([email, createdAt])
+  @@index([status, createdAt])
+}
