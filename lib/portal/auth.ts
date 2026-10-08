@@ -1,11 +1,11 @@
 import { cookies } from "next/headers";
+import { authorizedPortalMembership } from "./access";
 import { db } from "@/lib/db";
 import { operatorPreviewAllowed } from "@/lib/catalog/auth-core";
 import {
   PORTAL_COOKIE,
   PORTAL_SESSION_SECONDS,
   isPortalToken,
-  portalRoleAllows,
   portalToken,
   portalTokenHash,
   type PortalPermission,
@@ -43,11 +43,8 @@ export async function requirePortalUser() {
 export async function requirePortalBusiness(businessId: string, permission: PortalPermission = "read") {
   const user = await requirePortalUser();
   if (!businessId || businessId.length > 200) fail(400, "Identificador de negocio inválido.");
-  const membership = await db.businessUser.findUnique({
-    where: { userId_businessId: { userId: user.id, businessId } },
-    include: { business: { select: { id: true, name: true, status: true, country: true } } },
-  });
-  if (!membership || membership.business.status !== "active" || !portalRoleAllows(membership.role, permission)) {
+  const membership = await authorizedPortalMembership(db, user.id, businessId, permission);
+  if (!membership) {
     fail(403, "No tenés autorización para acceder a este negocio.");
   }
   return { user, membership };
