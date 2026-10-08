@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { isValidMetaSignature } from "@/lib/meta/signature";
-import { processInboundMessage } from "@/lib/bot/process-inbound";
+import { handleWhatsAppInbound } from "@/lib/bot/whatsapp-delivery";
 import { assertWhatsAppPreviewOnly, getWhatsAppVerifyToken } from "@/lib/meta/config";
 
 type MetaMessage = {
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
   }
 
   const raw = await request.text();
+  if (raw.length > 1_000_000) return NextResponse.json({ error: "Payload too large." }, { status: 413 });
   if (!isValidMetaSignature(raw, request.headers.get("x-hub-signature-256"))) {
     return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
   }
@@ -64,80 +65,55 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const results: Array<{ messageId?: string; status: string; detail?: string }> = [];
-
+  const results: Array<{ messageId?: string; status: string }> = [];
+  let shouldRetry = false;
+  let seen = 0;
   for (const entry of event.entry ?? []) {
     for (const change of entry.changes ?? []) {
       const value = change.value;
       const phoneNumberId = value?.metadata?.phone_number_id;
       if (!phoneNumberId) continue;
-
       const business = await db.business.findUnique({
         where: { whatsappPhoneNumberId: phoneNumberId },
-        select: { id: true },
+        select: { id: true, status: true },
       });
-
-      if (!business) {
-        results.push({ status: "ignored", detail: "Número de WhatsApp no asociado a un negocio." });
+      if (!business || business.status !== "active") {
+        results.push({ status: "ignored" });
         continue;
       }
-
-      const contact = value?.contacts?.[0];
       for (const message of value?.messages ?? []) {
-        const messageId = message.id;
-        const from = message.from ?? contact?.wa_id ?? "";
-        const text = message.type === "text" ? message.text?.body?.trim() ?? "" : "";
-
-        if (!messageId || !from || !text) {
-          results.push({ messageId, status: "ignored", detail: "Mensaje no textual o incompleto." });
+        seen++;
+        if (seen > 100) {
+          return NextResponse.json({ error: "Webhook batch exceeds limit." }, { status: 413 });
+        }
+        const id = message.id;
+        const from = message.from ?? "";
+        const body = message.type === "text" ? message.text?.body?.trim() ?? "" : "";
+        if (!id || !from || !body) {
+          results.push({ messageId: id, status: "ignored" });
           continue;
         }
-
-        const existingEvent = await db.webhookEvent.findUnique({
-          where: { eventId: messageId },
-        });
-        if (existingEvent) {
-          results.push({ messageId, status: "duplicate" });
-          continue;
-        }
-
-        await db.webhookEvent.create({
-          data: {
-            eventId: messageId,
-            businessId: business.id,
-            status: "processing",
-          },
-        });
-
         try {
-          const processed = await processInboundMessage({
+          const state = await handleWhatsAppInbound({
+            messageId: id,
             businessId: business.id,
             from,
-            customerName: contact?.profile?.name ?? null,
-            text,
-            whatsappMessageId: messageId,
-            sendToWhatsApp: true,
+            text: body,
+            customerName: value?.contacts?.find(c => c.wa_id === from)?.profile?.name ?? null,
           });
-
-          await db.webhookEvent.update({
-            where: { eventId: messageId },
-            data: { status: "processed", processedAt: new Date() },
-          });
-          results.push({ messageId, status: processed.duplicate ? "duplicate" : "processed" });
-        } catch (error) {
-          await db.webhookEvent.update({
-            where: { eventId: messageId },
-            data: { status: "failed", processedAt: new Date() },
-          });
-          results.push({
-            messageId,
-            status: "failed",
-            detail: error instanceof Error ? error.message : "Error desconocido",
-          });
+          results.push({ messageId: id, status: state });
+          if (state === "retryable") shouldRetry = true;
+        } catch {
+          // A transient DB outage should prompt Meta to retry the signed event.
+          results.push({ messageId: id, status: "retryable" });
+          shouldRetry = true;
         }
       }
     }
   }
 
-  return NextResponse.json({ received: true, results });
+  return NextResponse.json(
+    { received: !shouldRetry, results },
+    { status: shouldRetry ? 503 : 200, headers: { "Cache-Control": "no-store" } },
+  );
 }
