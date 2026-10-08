@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     ? await db.user.findUnique({ where: { email }, select: { id: true, passwordHash: true } })
     : null;
   const verified = password && user?.passwordHash && verifyAdminPassword(password, user.passwordHash);
-  if (!verified) {
+  if (!verified || !user) {
     await recordFailedPortalLogin(key);
     return error();
   }

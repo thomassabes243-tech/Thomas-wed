@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import { operatorPreviewAllowed, verifyAdminPassword } from "@/lib/catalog/auth-core";
+import { operatorPreviewAllowed } from "@/lib/catalog/auth-core";
 import {
   PORTAL_COOKIE,
   PORTAL_SESSION_SECONDS,
