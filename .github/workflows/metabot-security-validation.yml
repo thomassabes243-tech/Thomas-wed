@@ -85,3 +85,5 @@ jobs:
         run: npx prisma db push
       - name: Verify real tenant access rules
         run: npx --yes tsx scripts/portal-db-smoke.ts
+      - name: Verify public lead API and persistence
+        run: npx --yes tsx scripts/leads-db-smoke.ts
