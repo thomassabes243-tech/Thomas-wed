@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { currentPortalUser, requirePortalPreview } from "@/lib/portal/auth";
 

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
 import { currentPortalUser, requirePortalPreview } from "@/lib/portal/auth";
 import { isPortalToken, portalTokenHash } from "@/lib/portal/auth-core";
